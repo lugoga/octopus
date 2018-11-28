@@ -11,6 +11,8 @@ output:
 knitr::opts_chunk$set(echo = TRUE, echo = FALSE, warning = FALSE, message = FALSE, comment = "")
 ```
 
+# Introduction 
+
 ```{r}
 require(oce)
 require(tidyverse)
@@ -196,7 +198,7 @@ for (i in 1:length(files)){
   
 ctd.data[[i]] = read.ctd(files[i]) %>%
     ctdTrim(method = "downcast") %>% 
-    subset(pressure >=.50) %>% 
+    subset(pressure >=0) %>% 
     ctdDecimate(p = .25) 
 
 }
@@ -224,16 +226,59 @@ ctd.data[[30]] %>% plot()
 ```{r}
 kilwa.section = ctd.data %>% as.section()
 
-# kilwa.section %>% plot()
+kilwa.section %>% plot(which = "map")
 
-small.section = list(ctd.data[[30]], 
-                     ctd.data[[29]], 
-                     ctd.data[[28]], 
-                     ctd.data[[27]]) %>% 
-  as.section()
+# kilwa.section %>% plot()
 
 ```
 
+
+```{r}
+section.off.songosongo = list(ctd.data[[23]],
+                              ctd.data[[22]], 
+                              ctd.data[[21]], 
+                              ctd.data[[20]]) %>% 
+  as.section()
+
+section.off.songosongo %>% 
+  plot(ztype = "image", 
+       which = c("temperature", "oxygen", "salinity", "map"), 
+       xtype = "latitude", ylim = c(0,2),zcol = oceColorsPalette(120))
+```
+
+```{r}
+section.south = list(ctd.data[[16]],
+                              ctd.data[[17]], 
+                              ctd.data[[18]], 
+                              ctd.data[[19]], 
+                              ctd.data[[20]]) %>% 
+  as.section()
+
+section.south %>% 
+  plot(ztype = "image", 
+       which = c("temperature", "oxygen", "salinity", "map"), 
+       xtype = "longitude", ylim = c(0,2.5),zcol = oceColorsPalette(120))
+```
+
+
+```{r}
+section.north = list(ctd.data[[16]],
+                              ctd.data[[15]], 
+                              ctd.data[[14]], 
+                              ctd.data[[13]], 
+                              ctd.data[[12]], 
+                              ctd.data[[30]], 
+                              ctd.data[[29]], 
+                              ctd.data[[28]], 
+                              ctd.data[[27]], 
+                              ctd.data[[24]]) %>% 
+  as.section()
+
+section.north %>% 
+  plot(ztype = "image", 
+       which = c("temperature", "oxygen", "salinity", "map"), 
+       xtype = "longitude", ylim = c(0,4),zcol = oceColorsPalette(120))
+```
 
 ```{r}
 kilwa.ctd.tb = NULL
@@ -290,8 +335,10 @@ data.temp.long = data.frame(longitude, data.temp.df) %>%
 
 ```
 
+## Spatial Distribution of
+Profile and section plot could only answer the question relating to vertical structure of environmental variables along the transect. But for spatial distribution within the areas they are incapable. For example we wanted to know whether Were there areas that had higher environmental variables than others? The map in figure \@ref(fig:fig6) show the spatial distribution of surface temperature in the songosongo and somanga areas. Darker-colored are areas that had relatively lower temperature, whereas the dark-pinked colored are had relatively higher temperature. Areas with higher temperatures in the northwest and most areas in the southeast with lower temperatures (Figure \@ref(fig:fig6))
 
-Figure \@ref(fig:fig6)
+
 ```{r fig6, fig.cap="spatial distribution of temperature", fig.width=5.5, fig.align="center"}
 ggplot() + 
   geom_raster(data = data.temp.long, aes(x = longitude, y = latitude, fill = temperature), interpolate = TRUE)+
