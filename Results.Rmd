@@ -1,0 +1,279 @@
+---
+title: "literature"
+author: "Masumbuko Semba"
+date: "December 6, 2018"
+output: 
+      bookdown::html_document2
+      # bookdown::pdf_document2
+link-citations: yes
+csl: plos.csl
+bibliography: octopus.bib
+editor_options: 
+  chunk_output_type: inline
+always_allow_html: yes
+---
+
+# Results
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "", options(digits = 3))
+```
+
+
+
+```{r}
+require(oce)
+require(tidyverse)
+require(sf)
+require(lubridate)
+require(ocedata)
+require(xtractomatic)
+require(kableExtra)
+require(ggsci)
+```
+
+```{r eval=FALSE}
+load("wwf.RData")
+```
+
+```{r eval=FALSE}
+
+africa = read_sf("E:/GIS/Tanzania spatial data Bank/EAF14 Tanzania spatial datasets/africa/Spatial/AdmInfr/afcntry.shp")
+
+tz.ke = africa%>%select(-c(FIPS_CNTRY, REGIONA, EMPTY, EMPTY2))
+```
+
+
+
+```{r}
+octopus.ground.sf= st_read("e:/Data Manipulation/mafia_kilwa_octopus_mapping/shapefiles/miamba_topology_clean_updated_added_mafia.shp")
+
+octopus.ground.names = octopus.ground.sf 
+
+st_geometry(octopus.ground.names) = NULL
+
+octopus.ground.coordinates =  octopus.ground.sf %>% 
+  st_centroid() %>% st_coordinates() %>% 
+  as.data.frame() %>% 
+  rename(lon = 1, lat = 2)
+
+octopus.ground.names.df = octopus.ground.coordinates %>% 
+  bind_cols(octopus.ground.names) %>% 
+  select(-Habitats)
+
+```
+
+##Jibondo
+
+Figure \@ref(fig:fig-jibondo) is map showing the distribution of outer and inner coral reefs areas that octopus fisher use as fishing ground at Jibondo Island in Mafia Island.
+
+```{r map-jibondo, fig.cap="Coral reef octopus fishing areas used by fishermen from Jibondo Island"}
+ggplot() +
+  geom_sf(data = octopus.ground.sf %>% filter(Area == "Jibondo"), aes(fill = type), col = "black", size = 0.25)+
+  # coord_sf(xlim = c(39.45,39.59), ylim = c(-8.08,-7.8))+
+  scale_x_continuous(breaks = c(39.6, 39.8))+
+  scale_y_continuous(breaks = c(-8.12, -7.92))+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "grey95"),
+        legend.position = c(.85,.2),
+        legend.background = element_blank(), legend.key.size = unit(.75, "lines"))+
+  scale_fill_simpsons(name = "Octopus Areas", limits = c("Island", "inner coral", "coastal-shallow", "outer coral"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% 
+                             filter(Area == "Jibondo"& type %in% c("outer coral", "Island", "outer coral", "coastal-shallow")),
+                            aes(x = lon, y = lat, label = Name), nudge_y =  0.03,
+                           nudge_x = -0.025,segment.colour = "red", segment.size = .25)+
+  labs(x = NULL, y = NULL)
+
+# ggsave("map.pdf")
+
+```
+
+
+```{r}
+field = readxl::read_excel("Octopus.xlsx", sheet = 2)
+
+field.data = field %>%
+  mutate(date = dmy(siku) ) %>% 
+  filter(Kijiji %in% c("Somanga", "Songosongo")) %>% 
+  select(date, month = Month, village = Kijiji, diko = Diko, 
+         vessels = 7,engine.power = 8, 
+         fisher.number = 9, fishing.ground = 11, fish.type = 13,species = 14,
+         Family = 15,weight = 16, number.octopus = 17,cpue = 18) %>% 
+  mutate(catch.rate = weight/fisher.number, month = month(date))%>%
+  filter(fish.type == "Pweza")
+
+
+
+```
+
+```{r}
+jibondo.bwejuu = field %>%
+  mutate(date = dmy(siku) ) %>% 
+  filter(Kijiji %in% c("Jibondo", "Bwejuu")) %>% 
+  select(date, month = Month, village = Kijiji, diko = Diko, 
+         vessels = 7,engine.power = 8, 
+         fisher.number = 9, fishing.ground = 11, fish.type = 13,species = 14,
+         Family = 15,weight = 16, number.octopus = 17,cpue = 18) %>% 
+  mutate(catch.rate = weight/fisher.number, month = month(date))%>%
+  filter(fish.type == "Pweza")
+
+
+```
+
+
+```{r tab11}
+jibondo.freq = jibondo.bwejuu %>% filter(village == "Jibondo") %>% group_by(fishing.ground) %>% summarise(Fisher = n()) %>% ungroup() %>% mutate(percentage.fisher = Fisher/sum(Fisher)*100) %>% arrange(desc(percentage.fisher))
+
+jibondo.freq %>%
+  kable( "html", caption = "Coral reefs that are mostly used for octopus fishery as fishing  ground in Jibondo Island ", col.names = c("Fishing ground", "Number", "Percentage"), align = "c") %>%
+  column_spec(column = 1, width = "5cm") %>%
+  column_spec(column = 2:3, width = "2cm") %>%
+  add_header_above(c("", "Octopus fishery" = 2))
+```
+
+
+Athough the Chole Bay Genera Use Zone appear on the table \@ref(tab:tab11), it was dropped on the figure \@ref(fig:fig-jibondo) because it is out of the area of focus
+
+```{r fig-jibondo, fig.cap="Percentage of octopus fishers at different coral reefs grounds at Jibondo Island", fig.width=5, fig.height=2, fig.align="center"}
+ggplot(data = jibondo.freq,  aes(x = fishing.ground, y = percentage.fisher))+
+  geom_col(fill = "grey50", width = .75)+
+  coord_flip()+
+  theme_minimal()+
+  theme(axis.text = element_text(size = 11, colour = "grey50"),
+        axis.title = element_text(colour = "grey40", size = 12),
+        legend.position = "none",
+        legend.background = element_rect(colour = "grey60", size = .25),
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(linetype = 2),
+        panel.grid.minor.x = element_blank())+
+  labs(y = "Number of Octopus Fishers",  x = "Fishing ground") +
+  scale_x_discrete(limits = c("Mto Mkuu", "Jibondo Kusini", "Dongo", "Kitutia", "Jibondo") %>% rev())+
+  scale_y_continuous(breaks = seq(10,60,10), position = "right")
+```
+
+
+## Bwejuu
+
+Figure \@ref(fig:fig-bwejuu) is map showing the distribution of outer and inner coral reefs areas that octopus fisher use as fishing ground at Bwejuu Island in Mafia Island. the inner reefs are mostly used by divers while the outer reefs are mostly exposed during hight tide and extensively used by both walking and diving octopus fishers
+
+```{r map-bwejuu, fig.cap="Coral reef octopus fishing areas used by fishermen from Bwejuu Island"}
+ggplot() +
+  geom_sf(data = octopus.ground.sf %>% filter(Area == "Bwejuu"), aes(fill = type), col = "black")+
+  coord_sf(xlim = c(39.45,39.59), ylim = c(-8.08,-7.8))+
+  scale_x_continuous(breaks = c(39.46, 39.58))+
+  scale_y_continuous(breaks = c(-8.05, -7.83))+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "grey95"),
+        legend.position = c(.28,.85),
+        legend.background = element_blank(), legend.key.size = unit(.75, "lines"))+
+  scale_fill_simpsons(name = "Octopus Areas")+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% filter(Area == "Bwejuu"& type == "outer coral"),
+                            aes(x = lon, y = lat, label = Name), nudge_y =  0.03,
+                           nudge_x = -0.025,segment.colour = "red", segment.size = 0.5)+
+  labs(x = NULL, y = NULL)
+
+```
+
+
+```{r tab12}
+bwejuu.freq = jibondo.bwejuu %>% filter(village == "Bwejuu") %>% group_by(fishing.ground) %>% summarise(Fisher = n()) %>% ungroup() %>% mutate(percentage.fisher = Fisher/sum(Fisher)*100) %>% arrange(desc(percentage.fisher))
+
+bwejuu.freq %>%
+  kable( "html", caption = "Coral reefs that are mostly used for octopus fishery as fishing  ground in Bwejuu Island ", col.names = c("Fishing ground", "Number", "Percentage"), align = "c") %>%
+  column_spec(column = 1, width = "5cm") %>%
+  column_spec(column = 2:3, width = "2cm") %>%
+  add_header_above(c("", "Octopus fishers" = 2))
+```
+
+
+```{r fig-bwejuu, fig.cap="Percentage of octopus fishers at different coral reefs grounds at Bwejuu Island", fig.width=5, fig.height=3, fig.align="center"}
+ggplot(data = bwejuu.freq,  aes(x = fishing.ground, y = percentage.fisher))+
+  geom_col(fill = "grey50", width = .75)+
+  coord_flip()+
+  theme_minimal()+
+  theme(axis.text = element_text(size = 11, colour = "grey50"),
+        axis.title = element_text(colour = "grey40", size = 12),
+        legend.position = "none",
+        legend.background = element_rect(colour = "grey60", size = .25),
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(linetype = 2),
+        panel.grid.minor.x = element_blank())+
+  labs(y = "Number of Octopus Fishers",  x = "Fishing ground") +
+  scale_x_discrete(limits = c("Nyamalile", "Banda Mrima", "Vijambani", "Bwejuu Kusini", "Kaule", "Mwamba Wa Pwani", "Mbakare", "Ngusi") %>% rev())+
+  scale_y_continuous(breaks = seq(10,60,10), position = "right")
+```
+
+```{r}
+
+```
+
+```{r}
+field.octopus = field %>%
+  mutate(date = dmy(siku) ) %>% 
+  select(date, month = Month, village = Kijiji, diko = Diko, 
+         vessels = 7,engine.power = 8, 
+         fisher.number = 9, fishing.ground = 11, fish.type = 13,species = 14,
+         Family = 15,weight = 16, number.octopus = 17,cpue = 18) %>% 
+  mutate(catch.rate = weight/fisher.number, month = month(date))%>%
+  filter(fish.type == "Pweza")
+
+```
+
+Figure \@ref(fig:cpue-boxplot) show the Octopus fishers from those study areas located far from human influence (Songosongo and Bwejuu) obtained relatively higher catch than those close to human activities (Jibondo and Somanga).  In general, octopus fisher at Songosongo and Bwejuu catches twice as compared to fishers and Jibond and Somanga (Table \@ref(tab:tab12a))
+
+```{r cpue-boxplot, fig.cap="Catch rate of Octopus for the four study areas", fig.width=5, fig.height=2.5, fig.align="center"}
+field.octopus %>% group_by(fishing.ground, village) %>% summarise(count = n(), cpue.bar = mean(cpue), cpue.median = median(cpue), cpue.sd = sd(cpue, na.rm = TRUE)/sqrt(count)) %>% filter(!is.na(cpue.sd)) %>% arrange(cpue.bar) %>% ggplot(aes(x = village, y = cpue.bar)) + 
+  geom_boxplot(outlier.colour = "red", outlier.shape = 8, outlier.size = 4)+
+  scale_x_discrete(limits = c("Somanga", "Jibondo", "Bwejuu", "Songosongo"))+
+  labs(x = "", y = "CPUE (kg/number of fishers)")+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        legend.background = element_blank())+
+  annotate(geom = "text", x = 1.3, y = 8, 
+           label = "Octopus fishing ground far\nfrom the coast catch more\nthan sites close to coastline", 
+           col = "grey50" ,size = 3.4)+
+  coord_flip()+
+  scale_y_continuous(position = "right")
+  
+```
+
+```{r tab12a}
+field.octopus %>% group_by( village) %>% summarise(count = n(), cpue.bar = mean(cpue), cpue.median = median(cpue), cpue.sd = sd(cpue, na.rm = TRUE)/sqrt(count)) %>% filter(!is.na(cpue.sd)) %>% arrange(cpue.bar) %>% select(-cpue.median) %>%
+  kable("html", col.names = c("Site", "n", "CPUE", "Error"), align = "c",
+        caption = "Frequency and catch rate of octopus fishers") %>%
+  column_spec(column = 1:4, width = "3cm") %>%
+  add_header_above(c("", "", "Catch rate (Kg/fishers)" = 2))
+```
+
+```{r}
+field.octopus %>% group_by( village) %>% summarise(count = n(), cpue.bar = mean(cpue), cpue.median = median(cpue), cpue.sd = sd(cpue, na.rm = TRUE)/sqrt(count)) %>% filter(!is.na(cpue.sd)) %>% arrange(cpue.bar) %>% select(-cpue.median) %>% kable("latex", booktabs = T) %>%
+kable_styling(latex_options = "striped")
+```
+
+
+```{r eval=FALSE}
+ctd.points %>% select(name)
+
+miamba = c("Chocha", "Chocha", "Fungu Mbili", "Fungu Mbili", "Baniani", 
+           "Mziwani", "Mziwani", "Mchanga Muovu", "Mchanga Muovu", "Chamba cha Machange",
+           "Chamba cha Machange", "Kesi_mziwaji", "Mwamba wa Machange", 
+           "Mwamba wa Machange",  "Chocha_Masimiti",  "Chocha_Masimiti","Chocha Kubwa",
+           "Chocha Kubwa", "Hassn bin Ally", "Miza ndogo", "Miza ndogo", "Miza kubwa",
+           "Miza kubwa","Fisi", "NA", "Fisi", "Bandari", "Pwayasi", "Pwayasi", "Pwajuu",
+           "Pwajuu", "Pupu","Pupu", "Njovi", "Makato", "Imbi", "Mwalimu", "Wembe",
+           "Sirima", "Mtotoka", "Mtotoka", "Banda", "Banda", "Kabwanga", "Kabwanga",
+           "Wibi", "ctd", "ctd", "Mwembe uso", "Ctd")
+
+type = c("ctd", "ctd", "ctd", "mwamba", "ctd", "ctd", "mwamba", "ctd", "mwamba",
+         "mwamba", "ctd", "ctd", "mwamba", "ctd", "mwamba", "ctd", "mwamba", "ctd",
+         "mwamba", "mwamba", "ctd", "mwamba", "ctd", "ctd", NA, "ctd", "ctd", "mwamba",
+         "ctd", "mwamba", "ctd", "mwamba", "ctd", "ctd","ctd", "ctd", "ctd", "ctd", 
+         "mwamba", "mwamba", "ctd", "mwamba", "ctd", "mwamba", "ctd", "mwamba", "ctd",
+         "ctd", "mwamba", "ctd")
+
+data.frame(origin = ctd.points %>% select(name), miamba, type)
+
+
+field.data %>% distinct(fishing.ground)
+```

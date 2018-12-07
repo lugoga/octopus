@@ -1,0 +1,956 @@
+---
+title: "literature"
+author: "Masumbuko Semba"
+date: "December 6, 2018"
+output: 
+      bookdown::html_document2
+link-citations: yes
+csl: plos.csl
+bibliography: octopus.bib
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "")
+```
+
+## Methods
+### Study Area
+
+#### Jibondo and Bwejuu Octopus habitats
+The coral reef in Bwejuu and Jibondo are within the Mafia Island Marine Parak (MIMP) that covers about 565 km^2^ of water and 407 km^2^ [@moshy]. The area stretches across the trade wind system, where the northeast (NE) monsoon blows from December to April, and the southeast (SE) monsoon blows from June to October. These reverse with seasons---they blow northerly during the SE and southerly during the SE monsoon season (Semba et al., in press). The seasonal reverse of these winds influence climatic and oceanic conditions, including the air temperature that ranges from 20 to 32 °C, and the sea surface temperature that ranges from 25 to 31 °C (Bryceson et al., 2006).
+
+ The area has a vast shallow inshore areas dominated with corals, sand and seagrasses habitats. 
+
+The area consist of a rocky shores 0 km long oritineted more or less along the north-south axis. Bays and capes divide the area into three topographic areas also characterized by different habitats, from north to south. 
+
+The data for this study were collected on coral reefs and shallow areas within the coastal water of Somanaga and Songosongo Island in Kilwa District (Figure \@ref(fig:fig1)). 
+
+```{r}
+require(oce)
+require(tidyverse)
+require(sf)
+require(lubridate)
+require(ocedata)
+require(xtractomatic)
+```
+
+```{r}
+load("wwf.RData")
+```
+
+```{r eval=FALSE}
+
+africa = read_sf("E:/GIS/Tanzania spatial data Bank/EAF14 Tanzania spatial datasets/africa/Spatial/AdmInfr/afcntry.shp")
+
+tz.ke = africa%>%select(-c(FIPS_CNTRY, REGIONA, EMPTY, EMPTY2))
+```
+
+
+```{r eval=FALSE}
+setwd("e:/Data Manipulation/mafia_kilwa_octopus_mapping/")
+
+miamba = st_read("shapefiles//miamba_topology_clean_updated.shp")
+
+miamba.df = miamba
+
+centroid = miamba.df %>% 
+  st_centroid() %>% 
+  st_coordinates() %>% 
+  as.data.frame() %>% 
+  rename(lon = X, lat = Y)
+
+
+st_geometry(miamba.df) = NULL
+
+centroid = centroid %>% bind_cols(miamba.df %>% select(Name, type))
+```
+
+
+```{r fig1, fig.cap="Reefs commonly used by octopus fishers"}
+
+
+ggplot()+
+  geom_sf(data = miamba, aes(fill = type))+
+  # ggrepel::geom_text_repel(data = centroid, aes(x = lon, y = lat, label = Name)) +
+  theme_bw()+
+  theme(legend.position = c(.15,.12), legend.background = element_rect(colour = 1))+
+  labs(x = NULL, y = NULL)+
+  geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.6), ylim = c(-8.6, -8.35))+
+  scale_fill_discrete(name = "Reef Type")+
+  annotate(geom = "text", x = 39.32, y = -8.455, label = "Somanga")+
+  annotate(geom = "text", x = 39.5, y = -8.53, label = "Songosongo Island")+
+  ggsn::scalebar(location = "bottomright", x.min = 39.25, x.max = 39.48, y.min = -8.598, y.max = -8.35, dd2km = TRUE, dist = 5, model = "WGS84", st.size = 4, st.dist = 0.025, height = .03)
+  
+```
+
+```{r}
+miamba.df = miamba
+st_geometry(miamba.df) = NULL
+
+```
+
+### Octopus Catch Data
+The monthly catch data were collected From November and December 2017 and January to March 2018. 
+
+### Environmental Data
+The CTD casts for environmental variables was done in November 2018. To measure both the environmental variables and spatial distribution with relation to coral reefs in the area CTD cast was used. The CTD measurments were done on the reef for relatively reefs with deeper water above 2 meters, and for shallow reefs that the boat could not reach, CTD cast were towed just after the reef where the water depth was sufficient to make a profile. The ctd was casted and in each cast it recorded profile of five variables--- temperature, conductivity, depth, oxygen and fluorescence. A total of 30 CTD casts were recorded in two days . On `r lubridate::dmy(241118)` sixteen CTD casts were recorded within the coastal water of Somanga and on the following day on the  `r lubridate::dmy(251118)` fourteen cast were recorded in coastal water around Songosongo Island.
+
+### Reef boundary
+The boundary of the reefs were digitized from basemaps in R [@r]. First, the gps locations recorded during the cruise were converted to simple feature [@sf]. Then the point feature created were superimposed on a map service online with **mapview** package [@tim]. Once the geographical boundary of the area was established, the bounary of each reef was created by tracing the shallow water areas that were visible on the mapservice with the **mapedit** package [@tim2].  
+
+```{r, eval=FALSE}
+ctd = st_read("e:/Data Manipulation/mafia_kilwa_octopus_mapping/verification/miamba ctd kilwa.gpx")
+
+```
+
+```{r fig1a, fig.cap="Overlaid gps location on mapservices"}
+
+ctd = ctd %>% slice(-1)
+
+points = ctd %>% st_coordinates() %>% as.data.frame()
+st_geometry(ctd) = NULL
+
+ctd.points = points %>% bind_cols(ctd) %>% select(time, lon = 1, lat = 2, name)
+
+# mapview::mapview(ctd)
+leaflet::leaflet(data = ctd.points) %>%
+  leaflet::addTiles() %>%
+  leaflet::addMarkers(lng = ~lon, lat = ~lat, popup = ~name)
+```
+
+
+```{r eval=FALSE}
+require(leaflet)
+require(leaflet.esri)
+
+leaflet(data = ctd.points)%>%
+   addMarkers(lng = ~lon, lat = ~lat, popup = ~name) %>%
+  addEsriBasemapLayer(esriBasemapLayers$Gray) %>%
+  setView(lng = 39.39 ,lat = -8.43,zoom = 10) %>%
+  addEsriImageMapLayer(
+    # url = 'https://sampleserver3.arcgisonline.com/ArcGIS/rest/services/World/MODIS/ImageServer',
+     # options = imageMapLayerOptions(useCors = FALSE)) 
+     url = 'http://imagery.oregonexplorer.info/arcgis/rest/services/NAIP_2011/NAIP_2011_Dynamic/ImageServer',
+      options = imageMapLayerOptions(bandIds = c(3,0,1)))
+   
+
+
+```
+
+```{r, eval=FALSE}
+leaflet() %>%
+  addEsriBasemapLayer(esriBasemapLayers$Imagery) %>%
+  setView(-120.23, 43.5, 5)  %>%
+  addEsriImageMapLayer(
+    url = 'http://imagery.oregonexplorer.info/arcgis/rest/services/NAIP_2011/NAIP_2011_Dynamic/ImageServer',
+    options = imageMapLayerOptions(bandIds = c(3,0,1)))
+```
+
+
+## Results
+
+```{r}
+field = readxl::read_excel("Octopus.xlsx", sheet = 2)
+
+# field %>% names()
+
+field.data = field %>%
+  mutate(date = dmy(siku) ) %>% 
+  filter(Kijiji %in% c("Somanga", "Songosongo")) %>% 
+  select(date, month = Month, village = Kijiji, diko = Diko, 
+         vessels = 7,engine.power = 8, 
+         fisher.number = 9, fishing.ground = 11, fish.type = 13,species = 14,
+         Family = 15,weight = 16, number.octopus = 17,cpue = 18) %>% 
+  mutate(catch.rate = weight/fisher.number, month = month(date))%>%
+  filter(fish.type == "Pweza")
+
+
+```
+
+```{r}
+# field.data %>% distinct(fishing.ground)
+```
+
+
+
+```{r}
+village.stats = field.data %>% group_by(village, month) %>% 
+  summarise(n = n(),
+            cpue.mean = mean(catch.rate),
+            cpue.sd = sd(catch.rate)/n) %>%
+  ungroup() %>%
+  mutate(miezi = month)
+
+
+village.stats$miezi = as.integer(village.stats$miezi)
+
+village.stats.order.miezi = village.stats %>% 
+  mutate(miezi = replace(miezi,miezi ==1, 3.25),
+                         miezi = replace(miezi,miezi ==2, 4),
+                         miezi = replace(miezi,miezi ==3, 5),
+                         miezi = replace(miezi,miezi ==11, 1),
+                         miezi = replace(miezi,miezi ==12, 2))
+
+village.stats.order.miezi$miezi = as.integer(village.stats.order.miezi$miezi)
+
+
+
+```
+
+In the two sample areas---Somanga and Songosongo, both showed variation of catch rate over sampling months where fishermen at Songosongo catch bigger bigger octopus  per fisherman compared to Somanga (figure \@ref(fig:fig2)). 
+
+```{r fig2, fig.cap="The mean Catch rate for octopus fishermen. error bar are standard deviation of the mean catch rate",fig.height=3.5, fig.width=5.5, fig.align="center"}
+
+ggplot(data = village.stats.order.miezi, aes(x = miezi, y = cpue.mean, col = village))+
+  geom_line() +
+  geom_point( size = 4) +
+  geom_errorbar(aes(ymin = cpue.mean-cpue.sd, ymax = cpue.mean+cpue.sd), width = 0.25) +
+  scale_x_continuous(breaks = 1:5,
+                     labels = c("November", "December", "January", 
+                                "February", "March"))  +
+  labs(x = "", y = "CPUE (Weight (Kg)/ Number of fishers)")+
+  scale_color_discrete(name = "")+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        legend.direction = "horizontal",
+        legend.position = c(.25,.9),
+        legend.background = element_blank())+
+  annotate(geom = "text", x = 4.2, y = 5, 
+           label = "Overall, Songosongo has\n higher CPUE than Somanga\nexcept for Month of January", col = "grey50" ,size = 3.8)
+
+```
+
+The lower CPUE at Somanga is contributed by the number of octopus fisher in a single fishing vessels (figure \@ref(fig:fig3)). Four out of the five months of sampling, there were more fishermen in a a fishing vessels at Somanga than at Songosongo with exception of January, where the fishermen at Songosongo outnumber those at Somanga.
+
+```{r fig3, fig.cap="number of octopus fisher over the five month of field sampling",fig.height=3.5, fig.width=5.5, fig.align="center"}
+
+ggplot(data = village.stats.order.miezi, aes(x = miezi, y = n, fill = village))+
+  geom_col(position = "dodge") +
+  scale_x_continuous(breaks = 1:5,
+                     labels = c("November", "December", 
+                                "January", "February", "March"))  +
+  labs(x = "", y = "Octopus fishers")+
+  scale_fill_discrete(name = "")+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        legend.direction = "horizontal",
+        legend.position = c(.25,.9),
+        legend.background = element_blank())+
+  annotate(geom = "text", x = 4.5, y = 35, 
+           label = "Overall, Octopus\n fishermen at Somanga\noutnumber Songosongo\nexcept for January", col = "grey50" ,size = 3.8)
+
+```
+
+
+```{r eval=TRUE }
+ctd = st_read("e:/Data Manipulation/mafia_kilwa_octopus_mapping/verification/miamba ctd kilwa.gpx")
+
+ctd = ctd %>% select(time, name, desc) 
+
+ctd.df = ctd
+
+st_geometry(ctd.df) = NULL
+
+positions = ctd %>% st_coordinates() %>% as.data.frame() %>% rename(lon = X, lat = Y)
+
+ctd.tb = positions %>% bind_cols(ctd.df)
+
+
+ctd.tb.casts = ctd.tb %>%
+  slice(c(2,3,4,6,7,9,12,13,15,17,19,22,24,25,27, 28,30,32,34,35,36,37,38,39,42,44,46,48,49, 51))
+
+```
+
+```{r}
+mapview::mapview(ctd)
+```
+
+
+
+```{r}
+files = dir(path = "./ctd_kilwa/cnv/", pattern = ".cnv", full.names = TRUE, include.dirs = TRUE)
+```
+
+```{r}
+ctd.data = list()
+
+for (i in 1:length(files)){
+  
+ctd.data[[i]] = read.ctd(files[i]) %>%
+    ctdTrim(method = "downcast") %>% 
+    subset(pressure >=0) %>% 
+    ctdDecimate(p = .25) 
+
+}
+
+```
+
+
+```{r}
+for (j in 1:length(files)){
+  
+  ctd.data[[j]]@metadata$longitude = ctd.tb.casts$lon[j]
+  ctd.data[[j]]@metadata$latitude = ctd.tb.casts$lat[j]
+  ctd.data[[j]]@metadata$scientist = c("Patroba Matiku and Mathew Silasi and Masumbuko Semba")
+  ctd.data[[j]][["institute"]] = "Tanzania Fisheries Research Institute"
+  # ctd.data[[j]]@data$station = ctd.tb.casts$name[j]
+  
+}
+```
+
+Figure \@ref(fig:fig4)
+
+```{r fig4, fig.cap="profiles of CTD",fig.height=3.5, fig.height=4, fig.align="center"}
+ctd.data[[30]] %>% plot()
+```
+
+```{r}
+kilwa.section = ctd.data %>% as.section()
+
+kilwa.section %>% plot(which = "map")
+
+# kilwa.section %>% plot()
+
+```
+
+
+```{r}
+section.off.songosongo = list(ctd.data[[23]],
+                              ctd.data[[22]], 
+                              ctd.data[[21]], 
+                              ctd.data[[20]]) %>% 
+  as.section()
+
+section.off.songosongo %>% 
+  plot(ztype = "image", 
+       which = c("temperature", "oxygen", "salinity", "map"), 
+       xtype = "latitude", ylim = c(0,2),zcol = oceColorsPalette(120))
+```
+
+```{r}
+section.south = list(
+  # ctd.data[[16]],
+                              ctd.data[[17]],
+                              ctd.data[[18]], 
+                              ctd.data[[19]]
+                     # , 
+                     #          ctd.data[[20]]
+                     ) %>% 
+  as.section()
+
+section.south %>% 
+  plot(ztype = "image", 
+       which = c("temperature", "oxygen", "salinity", "map"), 
+       xtype = "longitude", ylim = c(0,2.5),zcol = oceColorsPalette(120))
+```
+
+
+```{r}
+# ctd.data[[16]],
+#                               ctd.data[[15]], 
+#                               ctd.data[[14]], 
+#                               ctd.data[[13]], 
+#                               ctd.data[[12]],
+
+section.north = list(ctd.data[[30]], 
+                              ctd.data[[29]], 
+                              ctd.data[[28]], 
+                              ctd.data[[27]], 
+                              ctd.data[[24]]) %>% 
+  as.section()
+
+section.north %>% 
+  plot(ztype = "image", 
+       which = c("temperature", "oxygen", "salinity", "map"), 
+       xtype = "longitude", ylim = c(0,4),zcol = oceColorsPalette(120))
+```
+
+```{r}
+kilwa.ctd.tb = NULL
+
+for (n in 1:length(files)){
+ctd = ctd.data[[n]]@data %>% as.data.frame() %>% 
+  mutate(longitude = ctd.tb.casts$lon[n],
+         latitude = ctd.tb.casts$lat[n],
+         time = ctd.data[[n]]@metadata$startTime,
+         station =ctd.tb.casts$name[n] )
+  
+kilwa.ctd.tb = kilwa.ctd.tb %>% bind_rows(ctd)
+
+
+}
+
+kilwa.ctd.tb = kilwa.ctd.tb %>% select(station, time, longitude, latitude, pressure, temperature, conductivity, salinity, oxygen, fluorescence)
+```
+
+Figure \@ref(fig:fig5)
+```{r fig5, fig.cap="Locations of CTD casts", fig.width=5.5, fig.align="center"}
+surface = kilwa.ctd.tb %>% 
+  filter(pressure == .50) 
+
+ggplot() +
+  geom_point(data = surface, 
+         aes(x = longitude, y = latitude, col = as.factor(as.Date(time))), size = 4) + 
+  scale_colour_discrete(name = "Day of \nSampling")+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        legend.direction = "vertical",
+        legend.position = c(.15,.15),
+        legend.background = element_blank()) +
+  labs(x = NULL, y = NULL)+
+  geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.6), ylim = c(-8.6, -8.3))
+```
+
+```{r}
+temperature = interpBarnes(x = surface$longitude, y = surface$latitude, z = surface$temperature)
+
+longitude = temperature$xg
+latitude = temperature$yg
+data.temp = temperature$zg
+
+data.temp.df = data.temp %>% as.data.frame() 
+
+data.temp.long = data.frame(longitude, data.temp.df) %>% 
+  gather(key = "key", value = "temperature", 2:51) %>% 
+  mutate(latitude = rep(latitude, each = 56)) %>% 
+  select(longitude, latitude, temperature)
+
+```
+
+## Spatial Distribution of
+Profile and section plot could only answer the question relating to vertical structure of environmental variables along the transect. But for spatial distribution within the areas they are incapable. For example we wanted to know whether Were there areas that had higher environmental variables than others? The map in figure \@ref(fig:fig6) show the spatial distribution of surface temperature in the songosongo and somanga areas. Darker-colored are areas that had relatively lower temperature, whereas the dark-pinked colored are had relatively higher temperature. Areas with higher temperatures in the northwest and most areas in the southeast with lower temperatures (Figure \@ref(fig:fig6))
+
+
+```{r fig6, fig.cap="spatial distribution of temperature", fig.width=5.5, fig.align="center"}
+ggplot() + 
+  geom_raster(data = data.temp.long, aes(x = longitude, y = latitude, fill = temperature), interpolate = TRUE)+
+  geom_contour(data = data.temp.long, 
+               aes(x = longitude, y = latitude, z = temperature),
+               size = .125, color = "black")+
+  scale_fill_gradientn(colours = oceColorsPalette(120), name = "Temperature")+
+  # geom_sf(data = miamba, aes(fill = type))+
+  geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36))+
+  labs(x = NULL, y = NULL)+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = c(.12,.3),
+        legend.background = element_blank()) 
+  
+  
+  
+```
+
+```{r}
+oxygen = interpBarnes(x = surface$longitude, y = surface$latitude, z = surface$oxygen)
+data.oxy = oxygen$zg
+
+data.oxy.df = data.oxy %>% as.data.frame() 
+
+data.oxygen.long = data.frame(longitude, data.oxy.df) %>% 
+  gather(key = "key", value = "oxygen", 2:51) %>% 
+  mutate(latitude = rep(latitude, each = 56)) %>% 
+  select(longitude, latitude, oxygen)
+```
+
+Figure \@ref(fig:fig7)
+```{r fig7, fig.cap="Spatial distribution of oxygen", fig.width=5.5, fig.align="center"}
+ggplot() + 
+  geom_raster(data = data.oxygen.long, aes(x = longitude, y = latitude, fill = oxygen), interpolate = TRUE)+
+  geom_contour(data = data.oxygen.long, 
+               aes(x = longitude, y = latitude, z = oxygen),
+               size = .125, color = "black")+
+  scale_fill_gradientn(colours = oceColorsPalette(120), name = "Oxygen")+
+  # geom_sf(data = miamba, aes(fill = type))+
+  geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36))+
+  labs(x = NULL, y = NULL)+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = c(.1,.3),
+        legend.background = element_blank()) 
+```
+
+
+```{r}
+salinity = interpBarnes(x = surface$longitude, y = surface$latitude, z = surface$salinity)
+data.oxy = salinity$zg
+
+data.oxy.df = data.oxy %>% as.data.frame() 
+
+data.salinity.long = data.frame(longitude, data.oxy.df) %>% 
+  gather(key = "key", value = "salinity", 2:51) %>% 
+  mutate(latitude = rep(latitude, each = 56)) %>% 
+  select(longitude, latitude, salinity)
+```
+
+Figure \@ref(fig:fig8)
+```{r fig8, fig.cap="spatial distribution of salinity", fig.width=5.5, fig.align="center"}
+ggplot() + 
+  geom_raster(data = data.salinity.long, aes(x = longitude, y = latitude, fill = salinity), interpolate = TRUE)+
+  geom_contour(data = data.salinity.long, 
+               aes(x = longitude, y = latitude, z = salinity),
+               size = .125, color = "black")+
+  scale_fill_gradientn(colours = oceColorsPalette(120), name = "Salinity")+
+  # geom_sf(data = miamba, aes(fill = type))+
+  geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36))+
+  labs(x = NULL, y = NULL)+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = c(.1,.3),
+        legend.background = element_blank()) 
+```
+
+
+
+```{r}
+fluorescence = interpBarnes(x = surface$longitude, y = surface$latitude, z = surface$fluorescence)
+data.oxy = fluorescence$zg
+
+data.oxy.df = data.oxy %>% as.data.frame() 
+
+data.fluorescence.long = data.frame(longitude, data.oxy.df) %>% 
+  gather(key = "key", value = "fluorescence", 2:51) %>% 
+  mutate(latitude = rep(latitude, each = 56)) %>% 
+  select(longitude, latitude, fluorescence)
+```
+
+
+Figure \@ref(fig:fig9)
+```{r fig9, fig.cap="spatial distribution of fluorescence", fig.width=5.5, fig.align="center"}
+ggplot() + 
+  geom_raster(data = data.fluorescence.long, aes(x = longitude, y = latitude, fill = fluorescence), interpolate = TRUE)+
+  geom_contour(data = data.fluorescence.long, 
+               aes(x = longitude, y = latitude, z = fluorescence),
+               size = .125, color = "black")+
+  scale_fill_gradientn(colours = oceColorsPalette(120), name = "Fluorescence")+
+  # geom_sf(data = miamba, aes(fill = type))+
+  geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36))+
+  labs(x = NULL, y = NULL)+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = c(.15,.3),
+        legend.background = element_blank()) 
+```
+
+## Climatology SST and Chlorophyll-*a*
+```{r}
+
+# make four corners of longitude and latitude that will be used to define the polygon
+point.df = data.frame(lon = c(39.17,39.69, 39.69, 39.16,39.17), 
+                      lat = c(-8.8, -8.8, -8.1, -8.1, -8.8))
+
+#make a point feature and transform it WGS84
+point.sf = point.df %>% st_as_sf(coords = c("lon", "lat")) %>% st_set_crs(4326) 
+
+# convert point featue into polygon
+poly.sf = point.sf %>% summarise(geometry = st_combine(geometry)) %>% st_cast("POLYGON")
+
+# make random points within th polygon
+random.point = poly.sf %>% st_sample(size = 200, type = "random") %>% st_sf()
+```
+
+
+
+```{r , eval = FALSE}
+getInfo("mhsstdmday")
+
+st_bbox(random.point)
+
+sst.mod = xtracto_3D(dtype = "mhsstdmday",
+                     xpos = c(39.1,39.8),
+                     ypos = c(-8.8,-8.1),
+                     tpos = c("2015-01-01", "2018-10-10"))
+
+lon = sst.mod$longitude
+lat = sst.mod$latitude
+time = sst.mod$time %>% as.Date()
+sst = sst.mod$data
+
+# dim(sst)
+
+
+```
+
+
+```{r}
+sst.tb = NULL
+
+for (i in 1:length(time)){
+sst.df = sst[,,i] %>% as.data.frame()
+
+sst.long = data.frame(lon, sst.df) %>% 
+  gather(key = "key", value = "sst",2:19 ) %>% 
+  mutate(lat = rep(lat,each = 18), date = time[i]) %>% 
+  select(date, lon,lat, sst)
+
+sst.tb = sst.tb %>% bind_rows(sst.long)
+
+}
+
+```
+
+
+```{r}
+sst.mean = sst.tb %>% 
+  mutate(year = year(date), month = month(date)) %>% 
+  group_by(year, month) %>% 
+  summarise(sst = mean(sst, na.rm = TRUE))
+```
+
+Figure \@ref(fig:fig-sst) shows the monthly value of sst in the Somanga--Songosongo area.
+
+```{r fig-sst, fig.height=2.5, fig.width=7,, fig.align="center", fig.cap="Monthly sea surface temperature within the areas of Somanga and Songosongo between 2015 and 2018"}
+ggplot(sst.mean, aes(x = month, y = year, fill = sst))+
+  geom_raster()+
+  scale_y_reverse()+
+  scale_x_continuous(limits =,breaks = 1:12, position = "top", 
+                     labels = month(seq(dmy(010118), dmy(151218), by = "month"), abbr = TRUE, label = TRUE))+
+  scale_fill_gradientn(colours = oce.colorsJet(120))+
+  # scale_fill_viridis_c()+
+  # theme_bw()+
+  theme(panel.background = element_blank(),
+        axis.text = element_text(size = 11))+
+  labs(x = "", y = "")
+
+
+```
+
+
+```{r, eval = FALSE}
+getInfo("mhchlamday")
+
+chl.mod = xtracto_3D(dtype = "mhchlamday", 
+                 xpos = c(39.25,39.6),
+                 ypos = c(-8.6,-8.35),
+                 tpos = c("2015-01-01", "2018-10-10"))
+
+lon = chl.mod$longitude
+lat = chl.mod$latitude
+time = chl.mod$time %>% as.Date()
+chl = chl.mod$data
+
+dim(chl)
+
+imagep(lon,lat, chl[,,46])
+
+```
+
+
+```{r}
+chl.tb = NULL
+
+for (i in 1:length(time)){
+  
+chl.df = chl[,,i] %>% as.data.frame()
+
+chl.long = data.frame(lon, chl.df) %>% 
+  gather(key = "key", value = "chl",2:8 ) %>% 
+  mutate(lat = rep(lat,each = 10), date = time[i]) %>% 
+  select(date, lon,lat, chl)
+
+chl.tb = chl.tb %>% bind_rows(chl.long)
+
+}
+
+```
+
+
+```{r}
+chl.mean = chl.tb %>% 
+  mutate(year = year(date), month = month(date)) %>% 
+  group_by(year, month) %>% 
+  summarise(chl = mean(chl, na.rm = TRUE))
+```
+
+Figure \@ref(fig:fig-chl) shows the monthly value of chlorophyll-a in the Somanga--Songosongo area.
+
+```{r fig-chl, fig.height=2.5, fig.width=7,, fig.align="center", fig.cap="Monthly chlorophyll-a concentration within the areas of Somanga and Songosongo between 2015 and 2018"}
+ggplot(chl.mean, aes(x = month, y = year, fill = log(chl)))+
+  geom_raster(interpolate = FALSE)+
+  scale_y_reverse()+
+  scale_x_continuous(limits =,breaks = 1:12, position = "top", 
+                     labels = month(seq(dmy(010118), dmy(151218), by = "month"), abbr = TRUE, label = TRUE))+
+  scale_fill_gradientn(colours = oce.colorsJet(120), name = "Chl\n(mg/m3)",
+                       breaks = seq(-.6,.6, .4), label = c(0,.4,.8,1.2))+
+  # scale_fill_viridis_c()+
+  # theme_bw()+
+  theme(panel.background = element_blank(),
+        axis.text = element_text(size = 11),
+        legend.title = element_text(size = 11))+
+  labs(x = "", y = "")
+
+
+```
+
+
+```{r fig-chl-mod, fig.cap="spatial distribution of chlorophyll", fig.width=9.5, fig.align="center"}
+
+chl.sp.mean = chl.tb %>% 
+  mutate(year = year(date), month = month(date, label = T, abbr = T)) 
+
+nov = ggplot()+
+  geom_raster(data = chl.sp.mean %>% filter(month == "Nov" & year == 2017),
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+   geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36)) +
+  labs(x = NULL, y = NULL)+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+       axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_fill_gradientn(name = "Chl",colours = oceColors9A(67), breaks = seq(-1,2, .8), label = c(0,.4,.8,1.2), na.value = "white")
+
+dec = ggplot()+
+  geom_raster(data = chl.sp.mean %>% filter(month == "Dec" & year == 2017),
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+   geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36)) +
+  labs(x = NULL, y = NULL)+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_fill_gradientn(name = "Chl",colours = oceColors9A(67), breaks = seq(-1,2, .8), label = c(0,.4,.8,1.2), na.value = "white")
+
+jan = ggplot()+
+  geom_raster(data = chl.sp.mean %>% filter(month == "Jan" & year == 2018),
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+   geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36)) +
+  labs(x = NULL, y = NULL)+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_fill_gradientn(name = "Chl",colours = oceColors9A(67), breaks = seq(-1,2, .8), label = c(0,.4,.8,1.2), na.value = "white")
+
+feb = ggplot()+
+  geom_raster(data = chl.sp.mean %>% filter(month == "Feb" & year == 2018),
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+   geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36)) +
+  labs(x = NULL, y = NULL)+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_fill_gradientn(name = "Chl",colours = oceColors9A(67), breaks = seq(-1,2, .8), label = c(0,.4,.8,1.2), na.value = "white")
+
+mar = ggplot()+
+  geom_raster(data = chl.sp.mean %>% filter(month == "Mar" & year == 2018),
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+   geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36)) +
+  labs(x = NULL, y = NULL)+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_fill_gradientn(name = "Chl",colours = oceColors9A(67), breaks = seq(-1,2, .8), label = c(0,.4,.8,1.2), na.value = "white")
+
+cowplot::plot_grid(nov,dec,jan,feb,mar, nrow = 1)
+```
+
+```{r}
+ctd.points %>% select(name)
+
+miamba = c("Chocha", "Chocha", "Fungu Mbili", "Fungu Mbili", "Baniani", 
+           "Mziwani", "Mziwani", "Mchanga Muovu", "Mchanga Muovu", "Chamba cha Machange",
+           "Chamba cha Machange", "Kesi_mziwaji", "Mwamba wa Machange", 
+           "Mwamba wa Machange",  "Chocha_Masimiti",  "Chocha_Masimiti","Chocha Kubwa",
+           "Chocha Kubwa", "Hassn bin Ally", "Miza ndogo", "Miza ndogo", "Miza kubwa",
+           "Miza kubwa","Fisi", "NA", "Fisi", "Bandari", "Pwayasi", "Pwayasi", "Pwajuu",
+           "Pwajuu", "Pupu","Pupu", "Njovi", "Makato", "Imbi", "Mwalimu", "Wembe",
+           "Sirima", "Mtotoka", "Mtotoka", "Banda", "Banda", "Kabwanga", "Kabwanga",
+           "Wibi", "ctd", "ctd", "Mwembe uso", "Ctd")
+
+type = c("ctd", "ctd", "ctd", "mwamba", "ctd", "ctd", "mwamba", "ctd", "mwamba",
+         "mwamba", "ctd", "ctd", "mwamba", "ctd", "mwamba", "ctd", "mwamba", "ctd",
+         "mwamba", "mwamba", "ctd", "mwamba", "ctd", "ctd", NA, "ctd", "ctd", "mwamba",
+         "ctd", "mwamba", "ctd", "mwamba", "ctd", "ctd","ctd", "ctd", "ctd", "ctd", 
+         "mwamba", "mwamba", "ctd", "mwamba", "ctd", "mwamba", "ctd", "mwamba", "ctd",
+         "ctd", "mwamba", "ctd")
+
+data.frame(origin = ctd.points %>% select(name), miamba, type)
+
+
+field.data %>% distinct(fishing.ground)
+```
+
+## Ocean current
+The location of the Kilwa and Mafia is influenced by wht surface currents that pass accross the area 
+```{r}
+## load drifter data
+drifter = read_table2("E:/Data Manipulation/drifter/tropind_drifters.txt", col_names = FALSE)
+
+## insert variable names
+drifter = drifter %>% select(id = X1, lon = X2, lat = X3, year= X8, month =   X9, 
+                                   day =  X10, hour = X11, drogue = X4, u =X5, v = X6,   sst = X7)
+```
+
+```{r}
+
+## create season
+drifter = drifter %>% 
+  mutate(season = month, 
+         season = replace(season,season %in% c(11,12,1,2,3), "NE"),
+         season = replace(season,season %in% c(4,10), "IN"),
+         season = replace(season,season %in% c(5,6,7,8,9), "SE"))
+
+## subset for the Area of interest
+drifter.rumaki = drifter %>% filter(lon >38.25 & lon <40 & lat > -9.3 & lat < -7.5 ) 
+
+
+```
+
+Figure \@ref(fig:current) reveal that ocean current varies with season with the lowest speed of below 0.25 m/s in February and March and the highest speed above 1.0 m/s in April and June. In general the southeast season (May, Jun, July and August) has relatively higher speed compared tot the northeast season (February, March, November and December)
+
+```{r mafia-current, fig.align="center", fig.width=7.5, fig.height=2, fig.cap="Surface current in the Mafia Channel during the northeast, inter and southeast monsoon seasons"}
+## mkondo maji
+mkondo = drifter.rumaki %>% 
+  mutate(date = make_date(year,month, day), 
+         month = month(date)) %>% 
+  group_by(season, month) %>% 
+  summarise(u = median(u, na.rm = TRUE), v = median(v, na.rm = TRUE))
+
+## january is missing, make a january without values
+jan = data.frame(season = "NE", month = 1, u = NA, v = NA)
+
+mkondo  = jan%>% bind_rows(mkondo)
+
+mkondo$month = as.integer(mkondo$month)
+
+ggplot() + 
+  geom_segment(data = mkondo, 
+               aes(x = month, xend = month+u, y = 0, yend = 0+v, colour = season), 
+               arrow = arrow(length = unit(0.35, "cm"), type = "open"), size = 1) +
+  theme_bw()+
+  scale_x_continuous(breaks = 1:12, 
+                     labels = month(seq(dmy(010118), dmy(151218), by = "month"), 
+                                    label = TRUE, abbr = TRUE)) +
+  scale_y_continuous(breaks = seq(0.25, 1.0,.25))+
+  labs(x = "", y = expression(Current~(ms^{-1})))+
+  scale_color_discrete(name = "")+
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_line(linetype = "dashed"),
+        axis.text = element_text(size = 11, colour = 1),
+        axis.title = element_text(size = 12, colour = 1), 
+        legend.position = c(.85,.83),
+        legend.direction = "horizontal",
+        legend.background = element_rect(fill = NA, colour = 1))
+```
+
+
+
+```{r, fig.width=9}
+ne.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "NE" | season == "IN"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55))
+
+in.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "IN"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55))
+
+
+se.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "SE"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55))
+
+cowplot::plot_grid(ne.current, in.current,se.current, nrow = 1)
+```
+
+
+
+## References

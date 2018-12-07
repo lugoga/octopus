@@ -1,0 +1,41 @@
+---
+title: "literature"
+author: "Masumbuko Semba"
+date: "December 6, 2018"
+output: 
+      bookdown::html_document2
+link-citations: yes
+csl: plos.csl
+bibliography: octopus.bib
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "", options(digits = 4))
+```
+
+# Introduction
+
+*O. eyanea* has an lndo-Pacific distribution (Robson 1929), living in holes in rocky areas from the intertidal area to at least 45 m (Van Heukelem 1969). 
+
+Habitat loss and degradation pose a threat and ability of marine coastal areas to support artisanal fisheries.  Different species have different preferences ulitilized with life stages, desnity, competition and environmental conditions both in time and space. During early life stage, many species occur in coastal waters in essential spawning and nursery grounds like seagrasses beds or soft shallow bottom habitats. 
+
+coastal habitats for octopus and other fishes are combination of environmentl factors that explain their distribution, with a presence link to suitable conditions and density to an optimum environmental conditions (ref). Favourbale conditions for fish development are linked to biological and physical factors. Location of spawning sites ins influenced by bathmetry, substrate type and diversity of adult fish habitats and mechanisms conditioning the primary production of the area. However, phycial processes---associated current and continental water inflows influence the distribution patterns of fish egges and larvae (ref).
+
+Spatial analysis of provide an important to tool to estimate catch rate of octopus at various reefs and map estimated spatial distribution patterns of environmental variables that favours abundance of octopus. 
+
+In Mafia and Kilwa Districts octopus fishery is an important part of local marine resources [@mosh, @mosh1].
+
+@mgaya and @horrill studies various aspect of their distribution, life history, reproductive cycle, feeding ecology and fisheries of octopus along the coastal water of Tanzania including Mafia Island. 
+
+@moshy1 investigated the impacts of marine conservation and economic policies, and environmental changes on the livelihoods of fishing communities in Mafia Island Marine Park. 
+
+In spite of an extensive literature on octopuses [@mgaya; @horrill;] a reliable data concerning their environmental conditions and habitats are difficult to find. 
+
+As the recruitment succes of octopus depend on pysical processes, the management of octopus can be considered independently of their environmental conditions (ref), and as such, habitat protection is an important ingredient of the ecosystem--based approaches to octopus fisheries in Kilwa and Mafia [@mcclanahan; @tobey].
+
+Therefore, in this report, we mapped territorial reefs in four sites with the Rufiji--Mafia--Kilwa seascape that are used for octopus fishery. These reefs are located in Songosongo and Somanga in Kilwa district and Jibondo and Bwejuu in Mafia Island. To characterise the reefs, we also collected profiles of temperature, salinity, conductivity, fluorescence and oxygen from surface to the maximum depth at several locations within the study areas. To complement with the *in-situ* environmental variables, we used satellite data which include sea surface temperature (SST), wind speed and direction, sea surface height (SSH) and chlrophyll to characterize the spatial patterns of these areas. We then combined the catch rate with the environmental variables to characterise the distribution of octopus at different reefs both in Mafia and Kilwa District. 
+
+
+

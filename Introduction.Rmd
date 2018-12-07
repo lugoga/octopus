@@ -1,0 +1,25 @@
+---
+title: "literature"
+author: "Masumbuko Semba"
+date: "December 6, 2018"
+output: 
+      bookdown::html_document2
+link-citations: yes
+csl: plos.csl
+bibliography: octopus.bib
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "")
+```
+
+# Introduction 
+## General Introduction
+Several environmental factors affect the survival and distribution of fishes at early developmental stages. Some of these factors include: local hydrographic conditions, associated transport processes, seasonal variability, prey and predator densities, and the spawning patterns of adult fishes [@gordo]. 
+
+In their natural ocean habitat most species of Octopus are solitary and are
+described in poptflar accounts as territorial. They use crevices in the rock, empty shells, or spaces in a reef face as homes from which they go out to catch prey and to which they return to eat and rest [@mather]. 
+
+The reefs in which fishermen prefer to go fishing for octopus are.... To assess why some reefs have relatively higher abundance of octopus compared to other, thus attract fisher to fish on them, we envestigated the influence of environmental variables.

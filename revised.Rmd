@@ -7,6 +7,8 @@ output:
 link-citations: yes
 csl: plos.csl
 bibliography: octopus.bib
+editor_options: 
+  chunk_output_type: inline
 ---
 
 
@@ -40,7 +42,7 @@ require(xtractomatic)
 load("wwf.RData")
 ```
 
-```{r}
+```{r eval=FALSE}
 
 africa = read_sf("E:/GIS/Tanzania spatial data Bank/EAF14 Tanzania spatial datasets/africa/Spatial/AdmInfr/afcntry.shp")
 
@@ -48,7 +50,7 @@ tz.ke = africa%>%select(-c(FIPS_CNTRY, REGIONA, EMPTY, EMPTY2))
 ```
 
 
-```{r}
+```{r eval=FALSE}
 setwd("e:/Data Manipulation/mafia_kilwa_octopus_mapping/")
 
 miamba = st_read("shapefiles//miamba_topology_clean_updated.shp")
@@ -101,7 +103,7 @@ The CTD casts for environmental variables was done in November 2018. To measure 
 ### Reef boundary
 The boundary of the reefs were digitized from basemaps in R [@r]. First, the gps locations recorded during the cruise were converted to simple feature [@sf]. Then the point feature created were superimposed on a map service online with **mapview** package [@tim]. Once the geographical boundary of the area was established, the bounary of each reef was created by tracing the shallow water areas that were visible on the mapservice with the **mapedit** package [@tim2].  
 
-```{r}
+```{r, eval=FALSE}
 ctd = st_read("e:/Data Manipulation/mafia_kilwa_octopus_mapping/verification/miamba ctd kilwa.gpx")
 
 ```
@@ -164,7 +166,8 @@ field.data = field %>%
          vessels = 7,engine.power = 8, 
          fisher.number = 9, fishing.ground = 11, fish.type = 13,species = 14,
          Family = 15,weight = 16, number.octopus = 17,cpue = 18) %>% 
-  mutate(catch.rate = weight/fisher.number, month = month(date))
+  mutate(catch.rate = weight/fisher.number, month = month(date))%>%
+  filter(fish.type == "Pweza")
 
 
 ```
@@ -248,7 +251,7 @@ ggplot(data = village.stats.order.miezi, aes(x = miezi, y = n, fill = village))+
 ```
 
 
-```{r}
+```{r eval=TRUE }
 ctd = st_read("e:/Data Manipulation/mafia_kilwa_octopus_mapping/verification/miamba ctd kilwa.gpx")
 
 ctd = ctd %>% select(time, name, desc) 
@@ -266,6 +269,12 @@ ctd.tb.casts = ctd.tb %>%
   slice(c(2,3,4,6,7,9,12,13,15,17,19,22,24,25,27, 28,30,32,34,35,36,37,38,39,42,44,46,48,49, 51))
 
 ```
+
+```{r}
+mapview::mapview(ctd)
+```
+
+
 
 ```{r}
 files = dir(path = "./ctd_kilwa/cnv/", pattern = ".cnv", full.names = TRUE, include.dirs = TRUE)
@@ -292,6 +301,7 @@ for (j in 1:length(files)){
   ctd.data[[j]]@metadata$longitude = ctd.tb.casts$lon[j]
   ctd.data[[j]]@metadata$latitude = ctd.tb.casts$lat[j]
   ctd.data[[j]]@metadata$scientist = c("Patroba Matiku and Mathew Silasi and Masumbuko Semba")
+  ctd.data[[j]][["institute"]] = "Tanzania Fisheries Research Institute"
   # ctd.data[[j]]@data$station = ctd.tb.casts$name[j]
   
 }
@@ -327,11 +337,14 @@ section.off.songosongo %>%
 ```
 
 ```{r}
-section.south = list(ctd.data[[16]],
-                              ctd.data[[17]], 
+section.south = list(
+  # ctd.data[[16]],
+                              ctd.data[[17]],
                               ctd.data[[18]], 
-                              ctd.data[[19]], 
-                              ctd.data[[20]]) %>% 
+                              ctd.data[[19]]
+                     # , 
+                     #          ctd.data[[20]]
+                     ) %>% 
   as.section()
 
 section.south %>% 
@@ -342,12 +355,13 @@ section.south %>%
 
 
 ```{r}
-section.north = list(ctd.data[[16]],
-                              ctd.data[[15]], 
-                              ctd.data[[14]], 
-                              ctd.data[[13]], 
-                              ctd.data[[12]], 
-                              ctd.data[[30]], 
+# ctd.data[[16]],
+#                               ctd.data[[15]], 
+#                               ctd.data[[14]], 
+#                               ctd.data[[13]], 
+#                               ctd.data[[12]],
+
+section.north = list(ctd.data[[30]], 
                               ctd.data[[29]], 
                               ctd.data[[28]], 
                               ctd.data[[27]], 
@@ -556,7 +570,8 @@ ggplot() +
 ```{r}
 
 # make four corners of longitude and latitude that will be used to define the polygon
-point.df = data.frame(lon = c(39.17,39.69, 39.69, 39.16,39.17), lat = c(-8.8, -8.8, -8.1, -8.1, -8.8))
+point.df = data.frame(lon = c(39.17,39.69, 39.69, 39.16,39.17), 
+                      lat = c(-8.8, -8.8, -8.1, -8.1, -8.8))
 
 #make a point feature and transform it WGS84
 point.sf = point.df %>% st_as_sf(coords = c("lon", "lat")) %>% st_set_crs(4326) 
@@ -599,7 +614,7 @@ sst.df = sst[,,i] %>% as.data.frame()
 
 sst.long = data.frame(lon, sst.df) %>% 
   gather(key = "key", value = "sst",2:19 ) %>% 
-  mutate(lat = lat[i], date = time[i]) %>% 
+  mutate(lat = rep(lat,each = 18), date = time[i]) %>% 
   select(date, lon,lat, sst)
 
 sst.tb = sst.tb %>% bind_rows(sst.long)
@@ -639,8 +654,8 @@ ggplot(sst.mean, aes(x = month, y = year, fill = sst))+
 getInfo("mhchlamday")
 
 chl.mod = xtracto_3D(dtype = "mhchlamday", 
-                 xpos = c(39.1,39.8),
-                 ypos = c(-8.8,-8.1),
+                 xpos = c(39.25,39.6),
+                 ypos = c(-8.6,-8.35),
                  tpos = c("2015-01-01", "2018-10-10"))
 
 lon = chl.mod$longitude
@@ -650,7 +665,7 @@ chl = chl.mod$data
 
 dim(chl)
 
-imagep(lon,lat, chl[,,1])
+imagep(lon,lat, chl[,,46])
 
 ```
 
@@ -659,11 +674,12 @@ imagep(lon,lat, chl[,,1])
 chl.tb = NULL
 
 for (i in 1:length(time)){
+  
 chl.df = chl[,,i] %>% as.data.frame()
 
 chl.long = data.frame(lon, chl.df) %>% 
-  gather(key = "key", value = "chl",2:19 ) %>% 
-  mutate(lat = lat[i], date = time[i]) %>% 
+  gather(key = "key", value = "chl",2:8 ) %>% 
+  mutate(lat = rep(lat,each = 10), date = time[i]) %>% 
   select(date, lon,lat, chl)
 
 chl.tb = chl.tb %>% bind_rows(chl.long)
@@ -683,12 +699,13 @@ chl.mean = chl.tb %>%
 Figure \@ref(fig:fig-chl) shows the monthly value of chlorophyll-a in the Somanga--Songosongo area.
 
 ```{r fig-chl, fig.height=2.5, fig.width=7,, fig.align="center", fig.cap="Monthly chlorophyll-a concentration within the areas of Somanga and Songosongo between 2015 and 2018"}
-ggplot(chl.mean, aes(x = month, y = year, fill = chl))+
-  geom_raster()+
+ggplot(chl.mean, aes(x = month, y = year, fill = log(chl)))+
+  geom_raster(interpolate = FALSE)+
   scale_y_reverse()+
   scale_x_continuous(limits =,breaks = 1:12, position = "top", 
                      labels = month(seq(dmy(010118), dmy(151218), by = "month"), abbr = TRUE, label = TRUE))+
-  scale_fill_gradientn(colours = oce.colorsJet(120))+
+  scale_fill_gradientn(colours = oce.colorsJet(120), name = "Chl\n(mg/m3)",
+                       breaks = seq(-.6,.6, .4), label = c(0,.4,.8,1.2))+
   # scale_fill_viridis_c()+
   # theme_bw()+
   theme(panel.background = element_blank(),
@@ -698,5 +715,126 @@ ggplot(chl.mean, aes(x = month, y = year, fill = chl))+
 
 
 ```
+
+
+```{r fig-chl-mod, fig.cap="spatial distribution of chlorophyll", fig.width=9.5, fig.align="center"}
+
+chl.sp.mean = chl.tb %>% 
+  mutate(year = year(date), month = month(date, label = T, abbr = T)) 
+
+nov = ggplot()+
+  geom_raster(data = chl.sp.mean %>% filter(month == "Nov" & year == 2017),
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+   geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36)) +
+  labs(x = NULL, y = NULL)+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+       axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_fill_gradientn(name = "Chl",colours = oceColors9A(67), breaks = seq(-1,2, .8), label = c(0,.4,.8,1.2), na.value = "white")
+
+dec = ggplot()+
+  geom_raster(data = chl.sp.mean %>% filter(month == "Dec" & year == 2017),
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+   geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36)) +
+  labs(x = NULL, y = NULL)+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_fill_gradientn(name = "Chl",colours = oceColors9A(67), breaks = seq(-1,2, .8), label = c(0,.4,.8,1.2), na.value = "white")
+
+jan = ggplot()+
+  geom_raster(data = chl.sp.mean %>% filter(month == "Jan" & year == 2018),
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+   geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36)) +
+  labs(x = NULL, y = NULL)+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_fill_gradientn(name = "Chl",colours = oceColors9A(67), breaks = seq(-1,2, .8), label = c(0,.4,.8,1.2), na.value = "white")
+
+feb = ggplot()+
+  geom_raster(data = chl.sp.mean %>% filter(month == "Feb" & year == 2018),
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+   geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36)) +
+  labs(x = NULL, y = NULL)+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_fill_gradientn(name = "Chl",colours = oceColors9A(67), breaks = seq(-1,2, .8), label = c(0,.4,.8,1.2), na.value = "white")
+
+mar = ggplot()+
+  geom_raster(data = chl.sp.mean %>% filter(month == "Mar" & year == 2018),
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+   geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
+  coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36)) +
+  labs(x = NULL, y = NULL)+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.title = element_text(size = 11, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_fill_gradientn(name = "Chl",colours = oceColors9A(67), breaks = seq(-1,2, .8), label = c(0,.4,.8,1.2), na.value = "white")
+
+cowplot::plot_grid(nov,dec,jan,feb,mar, nrow = 1)
+```
+
+```{r}
+ctd.points %>% select(name)
+
+miamba = c("Chocha", "Chocha", "Fungu Mbili", "Fungu Mbili", "Baniani", 
+           "Mziwani", "Mziwani", "Mchanga Muovu", "Mchanga Muovu", "Chamba cha Machange",
+           "Chamba cha Machange", "Kesi_mziwaji", "Mwamba wa Machange", 
+           "Mwamba wa Machange",  "Chocha_Masimiti",  "Chocha_Masimiti","Chocha Kubwa",
+           "Chocha Kubwa", "Hassn bin Ally", "Miza ndogo", "Miza ndogo", "Miza kubwa",
+           "Miza kubwa","Fisi", "NA", "Fisi", "Bandari", "Pwayasi", "Pwayasi", "Pwajuu",
+           "Pwajuu", "Pupu","Pupu", "Njovi", "Makato", "Imbi", "Mwalimu", "Wembe",
+           "Sirima", "Mtotoka", "Mtotoka", "Banda", "Banda", "Kabwanga", "Kabwanga",
+           "Wibi", "ctd", "ctd", "Mwembe uso", "Ctd")
+
+type = c("ctd", "ctd", "ctd", "mwamba", "ctd", "ctd", "mwamba", "ctd", "mwamba",
+         "mwamba", "ctd", "ctd", "mwamba", "ctd", "mwamba", "ctd", "mwamba", "ctd",
+         "mwamba", "mwamba", "ctd", "mwamba", "ctd", "ctd", NA, "ctd", "ctd", "mwamba",
+         "ctd", "mwamba", "ctd", "mwamba", "ctd", "ctd","ctd", "ctd", "ctd", "ctd", 
+         "mwamba", "mwamba", "ctd", "mwamba", "ctd", "mwamba", "ctd", "mwamba", "ctd",
+         "ctd", "mwamba", "ctd")
+
+data.frame(origin = ctd.points %>% select(name), miamba, type)
+
+
+field.data %>% distinct(fishing.ground)
+```
+
 
 ## References
