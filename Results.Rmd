@@ -31,11 +31,15 @@ require(kableExtra)
 require(ggsci)
 ```
 
-```{r eval=FALSE}
-load("wwf.RData")
+```{r eval=TRUE}
+# getwd()
+# save.image(file = "result.RData")
+
+# load all the data required for the this process to the last line. pass an argument "eval = FALSE" to the chunk that fetch data online, because it has downloaded and saved alread.
+load("result.RData")
 ```
 
-```{r eval=FALSE}
+```{r eval=TRUE}
 
 africa = read_sf("E:/GIS/Tanzania spatial data Bank/EAF14 Tanzania spatial datasets/africa/Spatial/AdmInfr/afcntry.shp")
 
@@ -277,3 +281,699 @@ data.frame(origin = ctd.points %>% select(name), miamba, type)
 
 field.data %>% distinct(fishing.ground)
 ```
+
+
+
+## Ocean current
+
+The location of the Kilwa and Mafia is influenced by wht surface currents that pass accross the area 
+```{r eval=FALSE}
+## load drifter data
+drifter = read_table2("E:/Data Manipulation/drifter/tropind_drifters.txt", col_names = FALSE)
+
+## insert variable names
+drifter = drifter %>% select(id = X1, lon = X2, lat = X3, year= X8, month =   X9, 
+                                   day =  X10, hour = X11, drogue = X4, u =X5, v = X6,   sst = X7)
+```
+
+```{r eval=FALSE}
+
+## create season
+drifter = drifter %>% 
+  mutate(season = month, 
+         season = replace(season,season %in% c(11,12,1,2,3), "NE"),
+         season = replace(season,season %in% c(4,10), "IN"),
+         season = replace(season,season %in% c(5,6,7,8,9), "SE"))
+
+## subset for the Area of interest
+drifter.rumaki = drifter %>% filter(lon >38.25 & lon <40 & lat > -9.3 & lat < -7.5 ) 
+
+#write_csv(drifter.rumaki, "E:/Data Manipulation/mafia_kilwa_octopus_mapping/drifter_rumaki.csv")
+
+
+```
+
+The surface currents in the area vary with seasons with surface speeds exceeding 1 m/s in southeast monsoon season. Figure \@ref(fig:mafia-current) reveal that ocean current varies with season with the lowest speed of below 0.25 m/s in February and March and the highest speed above 1.0 m/s in April and June. In general the southeast season (May, Jun, July and August) has relatively higher speed compared tot the northeast season (February, March, November and December)
+
+```{r mafia-current, fig.align="center", fig.width=7.5, fig.height=2, fig.cap="Surface current in the Mafia Channel during the northeast, inter and southeast monsoon seasons"}
+
+drifter.rumaki = read_csv("E:/Data Manipulation/mafia_kilwa_octopus_mapping/drifter_rumaki.csv")
+## mkondo maji
+mkondo = drifter.rumaki %>% 
+  mutate(date = make_date(year,month, day), 
+         month = month(date)) %>% 
+  group_by(season, month) %>% 
+  summarise(u = median(u, na.rm = TRUE), v = median(v, na.rm = TRUE))
+
+## january is missing, make a january without values
+jan = data.frame(season = "NE", month = 1, u = NA, v = NA)
+
+mkondo  = jan%>% bind_rows(mkondo)
+
+mkondo$month = as.integer(mkondo$month)
+
+ggplot() + 
+  geom_segment(data = mkondo, 
+               aes(x = month, xend = month+u, y = 0, yend = 0+v, colour = season), 
+               arrow = arrow(length = unit(0.35, "cm"), type = "open"), size = 1) +
+  theme_bw()+
+  scale_x_continuous(breaks = 1:12, 
+                     labels = month(seq(dmy(010118), dmy(151218), by = "month"), 
+                                    label = TRUE, abbr = TRUE)) +
+  scale_y_continuous(breaks = seq(0.25, 1.0,.25))+
+  labs(x = "", y = expression(Current~(ms^{-1})))+
+  scale_color_discrete(name = "")+
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_line(linetype = "dashed"),
+        axis.text = element_text(size = 11, colour = 1),
+        axis.title = element_text(size = 12, colour = 1), 
+        legend.position = c(.85,.83),
+        legend.direction = "horizontal",
+        legend.background = element_rect(fill = NA, colour = 1))
+```
+
+Like the the East African Coastal Current (EACC), surface current in the Mafia runs northward throughout the year with some exception during the northeast season, where the reverse of wind force water to flow southeastward direction at relatively low speed (Figure \@ref(fig:current-map-mafia)a). Most of the vector fields showing the surface current flows with water off the Mafia channel with exception during the southeast where drifters observed current in the mafia channel (Figure \@ref(fig:current-map-mafia)c)
+
+```{r current-map-mafia, fig.width=9, fig.cap="surface current within Bwejuu and Jibondo during the a) northeast, b)inter and c) southeast monsoon seasons"}
+ne.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "NE" | season == "IN"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55))
+
+in.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "IN"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55))
+
+
+se.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "SE"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55))
+
+cowplot::plot_grid(ne.current, in.current,se.current, nrow = 1, 
+                   labels = c("a)", "b)", "c)"), label_x = .30, label_y = .72, 
+                   label_size = 12, label_fontface = "plain")
+```
+
+Like the Mafia, seasonal surface current current in Somanga and Songosongo runs nortward throughtout the year (Figure \@ref(fig:current-map-kilwa))
+
+```{r current-map-kilwa, fig.width=9, fig.cap="surface current within Somanga and Songosongo during the a) northeast, b)inter and c) southeast monsoon seasons"}
+ne.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "NE" | season == "IN"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.8, -8.3))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.75, -8.35))
+
+in.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "IN"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.8, -8.3))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.75, -8.35))
+
+
+se.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "SE"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.8, -8.3))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.75, -8.35))
+
+cowplot::plot_grid(ne.current, in.current,se.current, nrow = 1, 
+                   labels = c("a)", "b)", "c)"), label_x = .28, label_y = .65, 
+                   label_size = 12, label_fontface = "plain")
+```
+
+## Environmental Variables
+### Sea Surface Temperature
+
+
+
+```{r , eval = TRUE}
+
+# getInfo("mhsstdmday")
+
+
+
+sst.mod = xtracto_3D(dtype = "mhsstdmday",
+                     xpos = c(39,41),
+                     ypos = c(-9,-7.5),
+                     tpos = c("2015-01-01", "2018-10-10"))
+
+lon = sst.mod$longitude
+lat = sst.mod$latitude
+time = sst.mod$time %>% as.Date()
+sst = sst.mod$data
+
+# dim(sst)
+
+
+```
+
+
+```{r}
+n.lat = length(lat)
+n.lat = n.lat+1
+n.lon = length(lon)
+
+sst.tb = NULL
+
+for (i in 1:length(time)){
+sst.df = sst[,,i] %>% as.data.frame()
+
+sst.long = data.frame(lon, sst.df) %>% 
+  gather(key = "key", value = "sst",2:n.lat ) %>% 
+  mutate(lat = rep(lat,each = n.lon ), date = time[i]) %>% 
+  select(date, lon,lat, sst)
+
+sst.tb = sst.tb %>% bind_rows(sst.long)
+
+}
+
+```
+
+
+```{r}
+sst.mean = sst.tb %>% 
+  mutate(year = year(date), month = month(date)) %>% 
+  group_by(year, month) %>% 
+  summarise(sst = mean(sst, na.rm = TRUE))
+```
+
+Figure \@ref(fig:fig-sst) shows the monthly value of sst between 2015 and 2018. The surface temperature show a seasonal pattern of low and high values. The temperature is relatively low between May and October and gradually start warming from November to February and reach maximum in March. 
+
+```{r fig-sst, fig.height=2.5, fig.width=7,, fig.align="center", fig.cap="Monthly sea surface temperature within the areas of Somanga and Songosongo between 2015 and 2018"}
+ggplot()+
+  geom_raster(data = sst.mean, aes(x = month, y = year, fill = sst))+
+  scale_y_reverse()+
+  scale_x_continuous(limits =,breaks = 1:12, position = "top", 
+                     labels = month(seq(dmy(010118), dmy(151218), by = "month"), abbr = TRUE, label = TRUE))+
+  scale_fill_gradientn(colours = oce.colorsJet(120))+
+  # scale_fill_viridis_c()+
+  # theme_bw()+
+  theme(panel.background = element_blank(),
+        axis.text = element_text(size = 11))+
+  labs(x = "", y = "")
+
+
+```
+
+The surface temperature of surface water around Mafia Island vary with season, on average, the surface water is warmer during the northeast (Figure \@ref(fig:sst-mafia)a) than southeast (Figure \@ref(fig:sst-mafia)b). However, the temperature differrence is not homogenous, with the areas surrounding the Bwejuu Island and western side of Mafia Island experience low temperature difference between the two seasons (Figure \@ref(fig:sst-mafia))
+
+```{r sst-mafia, fig.cap="Sea surface temperature around Mafia Island for a) March b) August and and c) is the difference in temperature between March and August. The griided data were processed from MODIS"}
+
+sst.tb = sst.tb %>% 
+  mutate(year = year(date) %>% as.integer(), month = month(date, label = TRUE, abbr = TRUE))
+
+
+mar.g = ggplot() +
+  geom_raster(data = sst.tb %>% filter(year == 2015 & month == "Mar" & sst <= 31) , 
+              aes(x = lon, y = lat, fill = sst), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55)) +
+  scale_fill_gradientn(breaks = c(29,30,31),colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Temperature~(~degree~C)), title.position = "top", title.hjust = 0.5))
+
+aug.g = ggplot() +
+  geom_raster(data = sst.tb %>% filter(year == 2015 & month == "Aug" & sst <= 31) , 
+              aes(x = lon, y = lat, fill = sst), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55)) +
+  scale_fill_gradientn(breaks = c(26.3,27.5),colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Temperature~(~degree~C)), title.position = "top", title.hjust = 0.5))
+
+
+## compute the difference of sst between March and August 2018
+sst.mar = sst.tb %>% filter(year == 2018 & month == "Mar") %>% rename(mar = sst)
+sst.aug = sst.tb %>% filter(year == 2018 & month == "Aug") %>% rename(aug = sst)
+
+sst.anomaly =  sst.mar%>%
+  bind_cols(sst.aug )%>% 
+  select(lon,lat, mar, aug) %>% mutate(anomaly = mar-aug)
+
+
+diff.g = ggplot() +
+  geom_raster(data = sst.anomaly , 
+              aes(x = lon, y = lat, fill = anomaly), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55)) +
+  scale_fill_gradientn(breaks = c(1.5,3,4.5),colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Difference~(~degree~C)), title.position = "top", title.hjust = 0.5))
+
+
+cowplot::plot_grid(mar.g, aug.g,diff.g, nrow = 1, 
+                   labels = c("a)", "b)", "c)"), label_x = .23, label_y = .62, 
+                   label_size = 12, label_fontface = "plain")
+```
+
+The surface temperature of surface water around Kilwa vary with season, the surface water is warmer during the northeast (Figure \@ref(fig:sst-kilwa)a) than southeast (Figure \@ref(fig:sst-kilwa)b). However, the temperature differrence is not homogenous, with the coastal water experience a less temperature difference between the two seasons (Figure \@ref(fig:sst-kilwa))
+
+```{r sst-kilwa, fig.cap="Sea surface temperature around Kilwa for a) March b) August and c) is the difference in temperature between March and August. The griided data were processed from MODIS"}
+
+sst.tb = sst.tb %>% 
+  mutate(year = year(date) %>% as.integer(), month = month(date, label = TRUE, abbr = TRUE))
+
+
+mar.g = ggplot() +
+  geom_raster(data = sst.tb %>% filter(year == 2018 & 
+                                         month == "Mar" & 
+                                         sst <= 31 & 
+                                         lon >39.2 & lon <39.8 & 
+                                         lat >-8.9 & lat < -8.2) , 
+              aes(x = lon, y = lat, fill = sst), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+   coord_sf(xlim = c(39.25, 39.7), ylim = c(-8.8, -8.3))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.65))+
+   scale_y_continuous(breaks = c(-8.75, -8.35)) +
+  scale_fill_gradientn(breaks = c(29,30),colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Temperature~(~degree~C)), title.position = "top", title.hjust = 0.5))
+
+aug.g = ggplot() +
+  geom_raster(data = sst.tb %>% filter(year == 2018 & 
+                                         month == "Aug" & 
+                                         sst <= 31 & 
+                                         lon >39.2 & lon <39.8 & 
+                                         lat >-8.9 & lat < -8.2) , 
+              aes(x = lon, y = lat, fill = sst), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+   coord_sf(xlim = c(39.25, 39.7), ylim = c(-8.8, -8.3))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.65))+
+   scale_y_continuous(breaks = c(-8.75, -8.35)) +
+  scale_fill_gradientn(breaks = c(26.3,27.5),colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Temperature~(~degree~C)), title.position = "top", title.hjust = 0.5))
+
+
+## compute the difference of sst between March and August 2018
+sst.mar = sst.tb %>% filter(year == 2018 & month == "Mar") %>% rename(mar = sst)
+sst.aug = sst.tb %>% filter(year == 2018 & month == "Aug") %>% rename(aug = sst)
+
+sst.anomaly =  sst.mar%>%
+  bind_cols(sst.aug )%>% 
+  select(lon,lat, mar, aug) %>% mutate(anomaly = mar-aug)
+
+
+diff.g = ggplot() +
+  geom_raster(data = sst.anomaly %>% filter(lon >39.2 & lon <39.8 & lat >-8.9 & lat < -8.2) , 
+              aes(x = lon, y = lat, fill = anomaly), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+ coord_sf(xlim = c(39.25, 39.7), ylim = c(-8.8, -8.3))+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.65))+
+  scale_y_continuous(breaks = c(-8.75, -8.35)) +
+  scale_fill_gradientn(breaks = c(2.2,3.4,4.6),colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Difference~(~degree~C)), title.position = "top", title.hjust = 0.5))
+
+
+cowplot::plot_grid(mar.g, aug.g,diff.g, nrow = 1, 
+                   labels = c("a)", "b)", "c)"), label_x = .23, label_y = .62, 
+                   label_size = 12, label_fontface = "plain")
+```
+
+### Chlorophyll-*a*
+
+```{r, eval = TRUE}
+
+# getInfo("mhchlamday")
+
+chl.mod = xtracto_3D(dtype = "mhchlamday", 
+                 xpos = c(39,41),
+                 ypos = c(-9,-7.5),
+                 tpos = c("2015-01-01", "2018-10-10"))
+
+lon = chl.mod$longitude
+lat = chl.mod$latitude
+time = chl.mod$time %>% as.Date()
+chl = chl.mod$data
+
+
+```
+
+
+```{r}
+
+n.lat = length(lat)
+n.lat = n.lat+1
+n.lon = length(lon)
+chl.tb = NULL
+
+for (i in 1:length(time)){
+  
+chl.df = chl[,,i] %>% as.data.frame()
+
+chl.long = data.frame(lon, chl.df) %>% 
+  gather(key = "key", value = "chl",2:n.lat ) %>% 
+  mutate(lat = rep(lat,each = n.lon), date = time[i]) %>% 
+  select(date, lon,lat, chl)
+
+chl.tb = chl.tb %>% bind_rows(chl.long)
+
+}
+
+```
+
+
+
+```{r}
+chl.mean = chl.tb %>% 
+  mutate(year = year(date), month = month(date)) %>% 
+  group_by(year, month) %>% 
+  summarise(chl = mean(chl, na.rm = TRUE))
+```
+
+Figure \@ref(fig:fig-chl) shows the monthly value of chlorophyll-a in the study area.The figure reveal the most productive water are during the months of February and May, though these is evident for the period between and , then the high productive months shifted to July-September and then in 2018 and went back to March and April (Figure \@ref(fig:fig-chl). The figure reveals that the productive months varies with change in environmental variables
+
+```{r fig-chl, fig.height=3.5, fig.width=7,, fig.align="center", fig.cap="Monthly chlorophyll-a concentration within the areas of Somanga and Songosongo between 2015 and 2018"}
+
+ggplot()+
+  geom_raster(data = chl.mean, aes(x = month, y = year, fill = log(chl)),interpolate = FALSE)+
+  scale_y_reverse()+
+  scale_x_continuous(limits =,breaks = 1:12, position = "top", 
+                     labels = month(seq(dmy(010118), dmy(151218), by = "month"), 
+                                    abbr = TRUE, label = TRUE))+
+  theme(panel.background = element_blank(),
+        axis.text = element_text(size = 11),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.key.width = unit(1.75, "cm"),
+        legend.key.height = unit(.4, "cm"),
+        legend.text = element_text(size = 11, colour = "grey30"),
+        legend.title = element_text(size = 12, colour = "grey30"))+
+  labs(x = "", y = "")+
+  scale_fill_gradientn(colours = oce.colorsJet(120), name = "Chl\n(mg/m3)", 
+                       guide = "colorbar",breaks = seq(-1.4,-.8, length.out = 5), 
+                       label = seq(.01,.51,length.out = 5) %>% round(digits = 2))+
+  guides(fill = guide_colorbar(title = expression(~Chlorophyll~(~mgm^{-3})), 
+                               title.position = "top", title.hjust = 0.5, reverse = FALSE))
+
+
+```
+
+The productivity in the Mafia area is mostly influenced by the freshwater input from Rufiji River that enhance the productivity in the area. The northeast receive rain that boost productivity (Figure \@ref(fig:chl-mafia)a). The cool weather and mixing during the northeast monsoon also promote productivity in the area (Figure \@ref(fig:chl-mafia)b). The difference between the two season is clearly marked within the estuary that has relatively higher chl value difference (Figure \@ref(fig:chl-mafia)c)
+
+```{r chl-mafia, fig.cap="Sea surface temperature around Mafia Island for a) March b) August and and c) is the difference in temperature between March and August. The griided data were processed from MODIS"}
+
+chl.tb = chl.tb %>% 
+  mutate(year = year(date) %>% as.integer(), month = month(date, label = TRUE, abbr = TRUE))
+
+
+mar.g = ggplot() +
+  geom_raster(data = chl.tb %>% filter(year == 2015 & month == "Mar") , 
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55)) +
+  scale_fill_gradientn(breaks = c(-2,0,2), label = c(0.01,0.25,0.5),
+                       colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Chlorophyll~(mgm^{-3})), title.position = "top", title.hjust = 0.5))
+
+aug.g = ggplot() +
+  geom_raster(data = chl.tb %>% filter(year == 2015 & month == "Aug") , 
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55)) +
+  scale_fill_gradientn(breaks = seq(-2,1, length.out = 3), label = c(0.01,0.1,0.25),
+                       colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Chlorophyll~(mgm^{-3})), title.position = "top", title.hjust = 0.5))
+
+
+## compute the difference of chl between March and August 2018
+chl.mar = chl.tb %>% filter(year == 2018 & month == "Mar") %>% rename(mar = chl)
+chl.aug = chl.tb %>% filter(year == 2018 & month == "Aug") %>% rename(aug = chl)
+
+chl.anomaly =  chl.mar%>%
+  bind_cols(chl.aug )%>% 
+  select(lon,lat, mar, aug) %>% mutate(anomaly = mar-aug)
+
+
+diff.g = ggplot() +
+  geom_raster(data = chl.anomaly , 
+              aes(x = lon, y = lat, fill = log(anomaly+.5)), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55)) +
+  scale_fill_gradientn(breaks = seq(-4,2.2, length.out = 3),label = seq(0.01,0.25,length.out = 3),
+                       colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Difference~(mgm^{-3})), title.position = "top", title.hjust = 0.5))
+
+
+cowplot::plot_grid(mar.g, aug.g,diff.g, nrow = 1, 
+                   labels = c("a)", "b)", "c)"), label_x = .23, label_y = .62, 
+                   label_size = 12, label_fontface = "plain")
+```
+
+The productivity in the Kilwa is mostly concentrated along the coastal shallow water for both northeast (Figure \@ref(fig:chl-kilwa)a) and southeast season (Figure \@ref(fig:chl-kilwa)b) and the major difference of productivity is within the longitude 39.4 and 39.5 northward (Figure \@ref(fig:chl-mafia)).
+
+```{r chl-kilwa, fig.cap="Sea surface temperature around Mafia Island for a) March b) August and and c) is the difference in temperature between March and August. The griided data were processed from MODIS"}
+
+chl.tb = chl.tb %>% 
+  mutate(year = year(date) %>% as.integer(), month = month(date, label = TRUE, abbr = TRUE))
+
+
+mar.g = ggplot() +
+  geom_raster(data = chl.tb %>% filter(year == 2015 & month == "Mar") , 
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 39.7), ylim = c(-8.8, -8.3))+ 
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+   scale_x_continuous(breaks = c(39.3,39.65))+
+  scale_y_continuous(breaks = c(-8.75, -8.35)) +
+  scale_fill_gradientn(breaks = c(-2,0,2), label = c(0.01,0.15,0.3),
+                       colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Chlorophyll~(mgm^{-3})), title.position = "top", title.hjust = 0.5))
+
+aug.g = ggplot() +
+  geom_raster(data = chl.tb %>% filter(year == 2015 & month == "Aug") , 
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 39.7), ylim = c(-8.8, -8.3))+ 
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+   scale_x_continuous(breaks = c(39.3,39.65))+
+  scale_y_continuous(breaks = c(-8.75, -8.35)) +
+  scale_fill_gradientn(breaks = seq(-2,1, length.out = 3), label = c(0.01,0.1,0.2),
+                       colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Chlorophyll~(mgm^{-3})), title.position = "top", title.hjust = 0.5))
+
+
+## compute the difference of chl between March and August 2018
+chl.mar = chl.tb %>% filter(year == 2018 & month == "Mar") %>% rename(mar = chl)
+chl.aug = chl.tb %>% filter(year == 2018 & month == "Aug") %>% rename(aug = chl)
+
+chl.anomaly =  chl.mar%>%
+  bind_cols(chl.aug )%>% 
+  select(lon,lat, mar, aug) %>% mutate(anomaly = mar-aug)
+
+
+diff.g = ggplot() +
+  geom_raster(data = chl.anomaly , 
+              aes(x = lon, y = lat, fill = log(anomaly+.5)), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 39.7), ylim = c(-8.8, -8.3))+ 
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.65))+
+  scale_y_continuous(breaks = c(-8.75, -8.35)) +
+  scale_fill_gradientn(breaks = seq(-4,2.2, length.out = 3),label = seq(0.01,0.095,length.out = 3),
+                       colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Difference~(mgm^{-3})), title.position = "top", title.hjust = 0.5))
+
+
+cowplot::plot_grid(mar.g, aug.g,diff.g, nrow = 1, 
+                   labels = c("a)", "b)", "c)"), label_x = .23, label_y = .62, 
+                   label_size = 12, label_fontface = "plain")
+```
+

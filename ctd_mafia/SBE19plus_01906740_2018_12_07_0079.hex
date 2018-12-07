@@ -1,0 +1,443 @@
+* Sea-Bird SBE19plus  Data File:
+* FileName = C:\Users\all user\Desktop\Patroba _ WWF Mapping Mafia\SBE19plus_01906740_2018_12_07_0079.hex
+* Software version 2.6.3.104
+* Temperature SN = 6740
+* Conductivity SN = 6740
+* System UpLoad Time = Dec 07 2018 14:30:55
+* <ApplicationData>
+* <Seaterm232>
+* <SoftwareVersion>2.6.3.104</SoftwareVersion>
+* <BuildDate>30-Jun-2017</BuildDate>
+* </Seaterm232>
+* </ApplicationData>
+* <InstrumentState>
+* <HardwareData DeviceType='SBE19plus' SerialNumber='01906740'>
+* 
+*    <Manufacturer>Sea-Bird Electronics, Inc.</Manufacturer>
+* 
+*    <FirmwareVersion>2.2d</FirmwareVersion>
+* 
+*    <FirmwareDate>9 February 2011 08:30</FirmwareDate>
+* 
+*    <CommandSetVersion>1.1</CommandSetVersion>
+* 
+*    <PCBAssembly PCBSerialNum='25307' AssemblyNum='41054G'/>
+* 
+*    <PCBAssembly PCBSerialNum='25737' AssemblyNum='41580B'/>
+* 
+*    <PCBAssembly PCBSerialNum='24669' AssemblyNum='41606'/>
+* 
+*    <PCBAssembly PCBSerialNum='24372' AssemblyNum='41059D'/>
+* 
+*    <MfgDate>  08 DEC 2010</MfgDate>
+* 
+*    <InternalSensors>
+* 
+*       <Sensor id='Main Temperature'>
+* 
+*          <type>temperature0</type>
+* 
+*          <SerialNumber>01906740</SerialNumber>
+* 
+*       </Sensor>
+* 
+*       <Sensor id='Main Conductivity'>
+* 
+*          <type>conductivity-0</type>
+* 
+*          <SerialNumber>01906740</SerialNumber>
+* 
+*       </Sensor>
+* 
+*       <Sensor id='Main Pressure'>
+* 
+*          <type>strain-0</type>
+* 
+*          <SerialNumber>3220369</SerialNumber>
+* 
+*       </Sensor>
+* 
+*    </InternalSensors>
+* 
+*    <ExternalSensors>
+* 
+*       <Sensor id='volt 0'>
+* 
+*          <type>SBE 43 OXY</type>
+* 
+*          <SerialNumber>432005</SerialNumber>
+* 
+*       </Sensor>
+* 
+*       <Sensor id='volt 1'>
+* 
+*          <type>not assigned</type>
+* 
+*          <SerialNumber>not assigned</SerialNumber>
+* 
+*       </Sensor>
+* 
+*       <Sensor id='volt 2'>
+* 
+*          <type>ECO-FLNTURT CHL</type>
+* 
+*          <SerialNumber>FLNTURTD-2025</SerialNumber>
+* 
+*       </Sensor>
+* 
+*       <Sensor id='volt 3'>
+* 
+*          <type>ECO-FLNTURT TURB</type>
+* 
+*          <SerialNumber>FLNTURTD-2025</SerialNumber>
+* 
+*       </Sensor>
+* 
+*       <Sensor id='volt 4'>
+* 
+*          <type>not assigned</type>
+* 
+*          <SerialNumber>not assigned</SerialNumber>
+* 
+*       </Sensor>
+* 
+*       <Sensor id='volt 5'>
+* 
+*          <type>not assigned</type>
+* 
+*          <SerialNumber>not assigned</SerialNumber>
+* 
+*       </Sensor>
+* 
+*    </ExternalSensors>
+* 
+* </HardwareData>
+* <StatusData DeviceType='SBE19plus' SerialNumber='01906740'>
+* 
+*    <DateTime>2018-12-07T14:28:32</DateTime>
+* 
+*    <LoggingState>not logging</LoggingState>
+* 
+*    <EventSummary numEvents='241'/>
+* 
+*    <Power>
+* 
+*       <vMain>12.2</vMain>
+* 
+*       <vLith>5.4</vLith>
+* 
+*       <iMain>61.5</iMain>
+* 
+*       <iPump>36.4</iPump>
+* 
+*       <iExt01> 4.1</iExt01>
+* 
+*       <iExt2345>20.6</iExt2345>
+* 
+*    </Power>
+* 
+*    <MemorySummary>
+* 
+*       <Bytes>1492821</Bytes>
+* 
+*       <Samples>87813</Samples>
+* 
+*       <SamplesFree>3782666</SamplesFree>
+* 
+*       <SampleLength>17</SampleLength>
+* 
+*       <Profiles>111</Profiles>
+* 
+*    </MemorySummary>
+* 
+* </StatusData>
+* <ConfigurationData DeviceType='SBE19plus' SerialNumber='01906740'>
+* 
+*    <ProfileMode>
+* 
+*       <ScansToAverage>1</ScansToAverage>
+* 
+*       <MinimumCondFreq>3226</MinimumCondFreq>
+* 
+*       <PumpDelay>60</PumpDelay>
+* 
+*       <AutoRun>no</AutoRun>
+* 
+*       <IgnoreSwitch>no</IgnoreSwitch>
+* 
+*    </ProfileMode>
+* 
+*    <Battery>
+* 
+*       <Type>alkaline</Type>
+* 
+*       <CutOff>7.5</CutOff>
+* 
+*    </Battery>
+* 
+*    <DataChannels>
+* 
+*       <ExtVolt0>yes</ExtVolt0>
+* 
+*       <ExtVolt1>no</ExtVolt1>
+* 
+*       <ExtVolt2>yes</ExtVolt2>
+* 
+*       <ExtVolt3>yes</ExtVolt3>
+* 
+*       <ExtVolt4>no</ExtVolt4>
+* 
+*       <ExtVolt5>no</ExtVolt5>
+* 
+*       <SBE38>no</SBE38>
+* 
+*       <OPTODE>no</OPTODE>
+* 
+*       <GTD>no</GTD>
+* 
+*    </DataChannels>
+* 
+*    <EchoCharacters>yes</EchoCharacters>
+* 
+*    <OutputExecutedTag>yes</OutputExecutedTag>
+* 
+*    <OutputFormat>raw HEX</OutputFormat>
+* 
+* </ConfigurationData>
+* <CalibrationCoefficients DeviceType='SBE19plus' SerialNumber='01906740'>
+* 
+*    <Calibration format='TEMP1' id='Main Temperature'>
+* 
+*       <SerialNum>01906740</SerialNum>
+* 
+*       <CalDate>07-Jan-11 </CalDate>
+* 
+*       <TA0>1.255288e-03</TA0>
+* 
+*       <TA1>2.593288e-04</TA1>
+* 
+*       <TA2>-2.376104e-07</TA2>
+* 
+*       <TA3>1.449298e-07</TA3>
+* 
+*       <TOFFSET>0.000000e+00</TOFFSET>
+* 
+*    </Calibration>
+* 
+*    <Calibration format='WBCOND0' id='Main Conductivity'>
+* 
+*       <SerialNum>01906740</SerialNum>
+* 
+*       <CalDate>07-Jan-11</CalDate>
+* 
+*       <G>-1.033008e+00</G>
+* 
+*       <H>1.393941e-01</H>
+* 
+*       <I>-2.175401e-04</I>
+* 
+*       <J>3.475757e-05</J>
+* 
+*       <CPCOR>-9.570000e-08</CPCOR>
+* 
+*       <CTCOR>3.250000e-06</CTCOR>
+* 
+*       <CSLOPE>1.000000e+00</CSLOPE>
+* 
+*    </Calibration>
+* 
+*    <Calibration format='STRAIN0' id='Main Pressure'>
+* 
+*       <SerialNum>3220369</SerialNum>
+* 
+*       <CalDate>21-Dec-10</CalDate>
+* 
+*       <PA0>8.222195e-01</PA0>
+* 
+*       <PA1>1.566037e-02</PA1>
+* 
+*       <PA2>-6.194425e-10</PA2>
+* 
+*       <PTCA0>5.244452e+05</PTCA0>
+* 
+*       <PTCA1>4.417653e+00</PTCA1>
+* 
+*       <PTCA2>-9.798927e-02</PTCA2>
+* 
+*       <PTCB0>2.510725e+01</PTCB0>
+* 
+*       <PTCB1>-1.150000e-03</PTCB1>
+* 
+*       <PTCB2>0.000000e+00</PTCB2>
+* 
+*       <PTEMPA0>-5.917147e+01</PTEMPA0>
+* 
+*       <PTEMPA1>5.387460e+01</PTEMPA1>
+* 
+*       <PTEMPA2>-2.653169e-01</PTEMPA2>
+* 
+*       <POFFSET>0.000000e+00</POFFSET>
+* 
+*       <PRANGE>5.076000e+03</PRANGE>
+* 
+*    </Calibration>
+* 
+*    <Calibration format='VOLT0' id='Volt 0'>
+* 
+*       <OFFSET>-4.687158e-02</OFFSET>
+* 
+*       <SLOPE>1.247988e+00</SLOPE>
+* 
+*    </Calibration>
+* 
+*    <Calibration format='VOLT0' id='Volt 1'>
+* 
+*       <OFFSET>-4.719579e-02</OFFSET>
+* 
+*       <SLOPE>1.248132e+00</SLOPE>
+* 
+*    </Calibration>
+* 
+*    <Calibration format='VOLT0' id='Volt 2'>
+* 
+*       <OFFSET>-4.684526e-02</OFFSET>
+* 
+*       <SLOPE>1.248324e+00</SLOPE>
+* 
+*    </Calibration>
+* 
+*    <Calibration format='VOLT0' id='Volt 3'>
+* 
+*       <OFFSET>-4.678105e-02</OFFSET>
+* 
+*       <SLOPE>1.247145e+00</SLOPE>
+* 
+*    </Calibration>
+* 
+*    <Calibration format='VOLT0' id='Volt 4'>
+* 
+*       <OFFSET>-4.669684e-02</OFFSET>
+* 
+*       <SLOPE>1.248307e+00</SLOPE>
+* 
+*    </Calibration>
+* 
+*    <Calibration format='VOLT0' id='Volt 5'>
+* 
+*       <OFFSET>-4.709579e-02</OFFSET>
+* 
+*       <SLOPE>1.247697e+00</SLOPE>
+* 
+*    </Calibration>
+* 
+*    <Calibration format='FREQ0' id='external frequency channel'>
+* 
+*       <EXTFREQSF>9.999977e-01</EXTFREQSF>
+* 
+*    </Calibration>
+* 
+* </CalibrationCoefficients>
+* <EventCounters DeviceType='SBE19plus' SerialNumber='01906740'>
+* 
+*    <EventSummary numEvents='241'/>
+* 
+*    <Event type='ErrorFLASHUncorrectableError' count='241'/>
+* 
+* </EventCounters></InstrumentState>
+* <Headers>
+* 
+* cast  79 03 Dec 2018 08:58:39 samples 70331 to 70422, avg = 1, stop = mag switch
+* 
+*END*
+0415DA0D4EB10803C154374D2D124CFBFB
+04160111DB3D0803C054374D71124AFC01
+0415B51976A30803BF54364EEC1252FC01
+04080316A02C0803C354364D2B124BFBF9
+03E8D014196C0803C454374CE0127FFBFE
+03D04A109D5D0803C154384C9B128AFBF6
+03C11D0EF0D90803C254384C041281FBFC
+03BB200E110E0803C054384BAB1279FBF5
+03BA060DA8840803C254394BAE1146FC02
+03BA7D0DAA2D0803C1543A4B9A113CFBF5
+03BB950DCE670803C0543C4B981145FBFB
+03BD140FB0480803C2543C4BE1113EFC05
+03BECA10064F0803C1543D4D7B124EFC02
+03BDF91017BA0803C1543D4D591251FBF4
+03BA7A0ECA0A0803C2543E4CFF1250FBFA
+03B7B60EFA780803C2543F4D041252FBF5
+03B9D413564A0803C954404E2D1252FBFC
+03CDE7131ACB0803D4544252E51381FBF2
+03E2EF1AF2D10803DD544452AE1372FBF8
+03F3281B15A00803E3544552171374FBFA
+03FD001B150E0803E4544452911373FC05
+04021C1B158B0803E5544551DA0ED9FBF4
+04047E1B156E0803EA5446552A0EE1FBF8
+0405B71B14310803EF544756670EDEFBFA
+0406821B13700803F6544754540EE0FBF8
+0407151B12E70803F9544752D40F3BFC09
+0407811B12EB0803FA544751FD0F41FBE9
+0407B41B13360803FA544851130F35FC00
+0407B51B13320803FC544750A00F40FBFC
+0407B91B12D70803FD54494FF50F3DFC05
+0407D71B12CE0803FE54484F8A0F3CFBF5
+0407F41B12E708040054484F7B0F3CFBF9
+0408051B132208040354494F600F36FBF9
+04080C1B137D08040154494F3D0F36FC03
+04080E1B13E108040154494EAA0F2AFBFF
+0408111B15B108040054494F200F2DFBF6
+0408081B168508040154494EDC0F2AFC01
+0407891B16FF08040254494E7F0F28FBF8
+0406C91B16C008040654484E230F4FFBF7
+04064A1B15B908040654494E160F48FBF5
+04061C1B160808040454494D980F4CFBF3
+04062E1B184408040054494D5A0F4CFBF7
+04064F1B19C008040054484CFB0F31FBFC
+0406211B184D08040154494CD40F24FC0A
+0405BF1B1632080402544A4C920F2AFBFA
+0405D61B147808040454494C440F35FC03
+0406581B13FA080404544A4C2F0F51FBFB
+0406D11B14DC080400544A4C500F46FBFC
+04071D1B16FE0803F354494C360F46FC02
+04073D1B18600803EB54494C910F4EFBFB
+0406E81B1B6F0803E554494B260F47FBF5
+0405EB1B1CEF0803E6544A4B170F9BFC00
+0404B21B1BF50803E9544A4B000F8EFBFD
+0403B11B1A9A0803E9544A4ADD0F96FC03
+0403781B17AA0803EB544B4AF60F9AFBF8
+0404461B15440803EB544B4AD50F2DFBFF
+0405531B14D30803EA544B4A910F3EFC00
+0406241B15120803EB544B4AE20F3CFBFE
+0406A31B16BC0803E8544C4AB30F3CFC01
+0406F11B189C0803E5544C4ABC0F3CFBF7
+0407021B19AB0803E5544C4A8B0F36FBFC
+0406AD1B1A910803E8544C4A780F37FC04
+0405FC1B1A950803EB544C4A160F35FBFC
+0405471B1ADC0803EE544C4A4A0F2CFC05
+0405011B1AE90803EF544D4A2B0F3DFBFC
+0404F91B1C2B0803E7544D4A2F0F36FBFB
+0404EC1B1DDE0803DB544D49EE0F41FBFA
+0404861B201B0803D1544D49B90F44FC03
+0403C31B23640803D1544C49131077FBFA
+0402721B26B40803D2544D4969107FFBFC
+0400611B2A9E0803CD544D4880107DFBFE
+03FE961B2DB80803C3544D4841108CFBF9
+03FCF61B28A30803C2544E487A109BFC00
+03FBA41B25640803C0544D47C510AAFBFE
+03FB3B153ECE0803C1544D471F109CFC06
+03FB670EED880803C1544D470110A0FBF4
+03FBBB0EE57C0803BF544D47251E5FFC01
+03FC060F66170803C1544D48AD1E65FBFC
+03FC3A102EE50803C1544D48731E6FFBFF
+03FC0A0F4D2F0803C2544E48BB1E63FBFB
+03FB9D0EF49C0803C2544D48E71E53FBF8
+03FB9E0E728E0803C1544D48ED1027FBF7
+03FB830F2C2F0803C1544C49791032FBFC
+03FBBE0F66D90803BF544C4A0A102EFBFF
+03FC280E5C870803C1544D4A0E102CFC00
+03FCA20E67B50803C2544C4A861434FBFC
+03FD220EBBF50803C2544C4AB81432FBFD
+03FDA50F152A0803C3544D49F01438FC03
+03FE2A0FE9B40803C3544C49C9143FFC04
+03FE850E96DB0803C2544D4A131250FBFB
+03FEBD0E397B0803C3544D49F6124BFBF3
+03FEFE0E51140803C3544D49FF1254FBFF
