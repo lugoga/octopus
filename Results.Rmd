@@ -977,3 +977,242 @@ cowplot::plot_grid(mar.g, aug.g,diff.g, nrow = 1,
                    label_size = 12, label_fontface = "plain")
 ```
 
+### mafia ctd
+```{r}
+# read the gps file for Bwejuu and Jibondo ctd casts and reefs
+location.mafia = st_read("e:/Data Manipulation/mafia_kilwa_octopus_mapping/gps files/miamba mafia.gpx")
+
+# extract the positions of each location recorded
+positions = location.mafia %>% 
+  st_coordinates() %>%
+  as.data.frame()%>% 
+  rename(lon = X, lat = Y)
+
+# make a copy of the location.mafia file
+location.mafia.attributes = location.mafia
+
+# obtain the attribute information only by supressing the geometry information
+st_geometry(location.mafia.attributes) = NULL
+
+# process to obtain the attributes
+attributes = location.mafia.attributes %>% 
+  select(time,name, desc) %>% 
+  separate(name, c("cast", "number"), sep = 4)
+
+
+# bind the positions and attributes and drop non cast data
+ctd.location.mafia = positions %>% bind_cols(attributes) %>% 
+  filter(cast == "Cast") %>% 
+  select(time, lon,lat,cast, number)
+
+
+```
+
+## check the ctd cast and location
+The number of gps locations recorded are  38 while the ctd casted are 39. After checking, I found that one point of gps was not recorded, hence I added the time of gps from ctd cast but without the location informations
+
+```{r}
+# I am missing location for cast 76
+# also remove cast 79 because it was bad. The intrument was towed without removing the cover of the pressure sensor. not is cas 7
+
+missing.location = data.frame(time = dmy_hms("031218 08:19:15", tz = ""),
+                              lon = NA, lat = NA, cast = NA, number = NA)
+
+ctd.location.mafia = ctd.location.mafia %>% 
+  bind_rows(missing.location) %>% 
+  arrange(time) %>%
+  mutate(stationId = seq(1,39,1))
+```
+
+```{r}
+files = dir(path = "./ctd_mafia/cnv/", pattern = ".cnv", full.names = TRUE)
+```
+
+## check the quality of the cast
+We expected the profiles to measure from surface (depthe = 0), we can assess the quality of these measurement using the `plotScan()`. note that cast 8 have all the pressure with negative values. This is because for pressure sensor was not removed while the instruments was towed in the water. This is cast with bad data and should be removed.
+```{r eval=FALSE}
+for (i in 1:39){
+  readline(prompt = "ENTER")
+  
+  read.ctd(files[i]) %>% 
+    plotScan(main = paste("cast",i))
+  
+  }
+```
+
+
+```{r}
+# casts = c(1:4,6:7,9:39)
+
+ctd.mafia = list()
+
+for (i in 1:39){
+  ## read the cnv file and process them
+  ctd.mafia[[i]] = read.ctd(files[i]) %>% 
+    ctdTrim(method = "downcast") %>% 
+    subset(pressure >= .2) %>% 
+    ctdDecimate(p = .25)
+  
+  # once each cast is processed, assign the attributes
+  ctd.mafia[[i]][["longitude"]] = ctd.location.mafia$lon[i]
+  ctd.mafia[[i]][["latitude"]] = ctd.location.mafia$lat[i]
+  ctd.mafia[[i]][["institute"]] = "Tanzania Fisheries Research Institute"
+  ctd.mafia[[i]][["scientist"]] = "Patroba Matiku, Muhaji Chande & Masumbuko Semba"
+  # inserting the station is important because without it you will never subset hydrographic section to your       locations later
+  ctd.mafia[[i]]@metadata$station = i 
+}
+
+```
+
+Because of the inaccuracy of cast 5 and 8, we ought to remove them from the ctd list. Begin with cast 8 and the cast 5 i.e remove in descending order so that the numbering of low cast is not afftected.
+```{r}
+ctd.mafia[[8]] = NULL
+ctd.mafia[[5]] = NULL
+```
+
+```{r}
+ section.mafia = ctd.mafia %>% as.section()
+```
+
+```{r} 
+section.mafia %>% plot(which = "map")
+
+section.mafia %>% subset(longitude <39.58)
+```
+
+```{r}
+# Western transect of bwejuu island:latitudinal gradient
+section.mafia %>% 
+  subset(stationId < 7) %>% 
+  plot(which = c("map","oxygen", "temperature","salinity"), 
+       ztype = "image", xtype = "latitude", ylim = c(0.5,6))
+```
+
+```{r}
+#south transect of bwejuu island: longitudinal gradient
+section.mafia %>% 
+    subset(stationId >= 7 & stationId < 12) %>% 
+    plot(which = c("map","oxygen", "temperature","salinity"), 
+         ztype = "image", xtype = "longitude", ylim = c(0.5,12))
+```
+
+```{r}
+# eastern transect of bwejuu island:latitudinal gradient
+section.mafia %>% 
+    subset(stationId >= 12 & stationId < 16) %>% 
+    plot(which = c("map","oxygen", "temperature","salinity"), 
+         ztype = "image", xtype = "latitude", ylim = c(0.5,12))
+```
+
+```{r}
+# northern transect of bwejuu island:longitudinal gradient
+section.mafia %>% 
+    subset(stationId >= 15 & stationId <= 17) %>% 
+    plot(which = c("map","oxygen", "temperature","salinity"), 
+         ztype = "image", xtype = "longitude", ylim = c(0.5,2.5))
+```
+
+```{r}
+# northern transect: chole to Mange:longitudinal gradient
+section.mafia %>% 
+    subset(stationId >= 20 & stationId <= 29) %>% 
+    plot(which = c("map","oxygen", "temperature","salinity"), 
+         ztype = "image", xtype = "longitude", ylim = c(0.5,5))
+```
+
+
+```{r}
+# northern transect: Mange to Kitutia:latitudinal gradient
+section.mafia %>% 
+    subset(stationId >= 29 & stationId <= 34) %>% 
+    plot(which = c("map","oxygen", "temperature","salinity"), 
+         ztype = "image", xtype = "latitude", ylim = c(0.5,8))
+```
+
+
+```{r}
+# northern transect: Kitutia to mto wa fungu:longitudinal gradient
+section.mafia %>% 
+    subset(stationId >= 20 & stationId <= 29) %>% 
+    plot(which = c("map","oxygen", "temperature","salinity"), 
+         ztype = "image", xtype = "longitude", ylim = c(0.5,5))
+```
+
+```{r}
+
+ctd.mafia.tb = NULL
+
+for (j in 1:37){
+
+ctd.mafia.df = ctd.mafia[[j]]@data %>% as.data.frame()  %>%
+  mutate(lat = ctd.mafia[[j]]@metadata$latitude,
+         lon = ctd.mafia[[j]]@metadata$longitude,
+         time = ctd.mafia[[j]]@metadata$startTime,
+         cast = ctd.mafia[[j]]@metadata$station)%>% 
+  as.tibble() %>%
+  select(cast, time, lon,lat,depth, pressure, temperature, 
+         conductivity, salinity, oxygen, fluorescence)
+
+  ctd.mafia.tb = ctd.mafia.tb %>% bind_rows(ctd.mafia.df)
+    
+}
+
+rm(ctd.mafia.df, i, j)
+
+
+```
+
+
+```{r}
+ctd.mafia.tb = ctd.mafia.tb %>% 
+  mutate(site = day(time), 
+         site = replace(site,site == 3, "Bwejuu"),
+         site = replace(site,site == 4, "Jibondo"))
+```
+
+```{r}
+ggplot(data = ctd.mafia.tb, aes(x = site, y = temperature))+geom_boxplot()
+```
+
+
+```{r}
+ggplot(data = ctd.mafia.tb,
+       aes(y = pressure, x = fluorescence, colour = site)) + 
+  geom_path()+
+  scale_y_reverse()+
+  scale_x_continuous(position = "top")+
+  scale_color_discrete()
+```
+
+```{r}
+surface = ctd.mafia.tb %>% filter(pressure == 0.5)
+
+oxygen.surface.interp = interpBarnes(x = surface$lon, y = surface$lat, z = surface$oxygen)
+
+```
+
+```{r}
+lon = oxygen.surface.interp$xg
+lat = oxygen.surface.interp$yg
+oxygen = oxygen.surface.interp$zg
+
+imagep(lon,lat, oxygen, filledContour = TRUE, col = oceColors9A(120))
+
+nlon = length(lon)
+nlat = length(lat)+1
+
+
+```
+
+```{r}
+
+oxygen.surface.interp.df =data.frame(lon, as.data.frame(oxygen)) %>% 
+  gather(key = "key", value = "oxygen", 2:42) %>%
+  mutate(lat = rep(lat, each = nlon)) %>% 
+  select(lon,lat, oxygen)
+
+ggplot()+
+  geom_raster(data = oxygen.surface.interp.df, aes(x = lon, y = lat, fill = oxygen), interpolate = TRUE)+
+  scale_fill_gradientn(colours = oceColors9A(120))
+```
+
