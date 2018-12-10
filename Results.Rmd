@@ -1197,6 +1197,8 @@ lat = oxygen.surface.interp$yg
 oxygen = oxygen.surface.interp$zg
 
 imagep(lon,lat, oxygen, filledContour = TRUE, col = oceColors9A(120))
+contour(lon,lat, oxygen,  col = 1, add = TRUE)
+
 
 nlon = length(lon)
 nlat = length(lat)+1
@@ -1208,11 +1210,242 @@ nlat = length(lat)+1
 
 oxygen.surface.interp.df =data.frame(lon, as.data.frame(oxygen)) %>% 
   gather(key = "key", value = "oxygen", 2:42) %>%
-  mutate(lat = rep(lat, each = nlon)) %>% 
-  select(lon,lat, oxygen)
+  mutate(lat = rep(lat, each = nlon), depth = 0.5) %>% 
+  select(lon,lat, depth, oxygen)
 
 ggplot()+
-  geom_raster(data = oxygen.surface.interp.df, aes(x = lon, y = lat, fill = oxygen), interpolate = TRUE)+
+  geom_raster(data = oxygen.surface.interp.df, 
+              aes(x = lon, y = lat, fill = oxygen), interpolate = TRUE)+
+  geom_contour(data = oxygen.surface.interp.df,
+               aes(x = lon, y = lat, z = oxygen), col = 1)+
   scale_fill_gradientn(colours = oceColors9A(120))
 ```
 
+## Iterate the process
+### oxygen
+```{r}
+
+depth = c(0.5,5,10) # octopus fishery mostly conducted on reefs that are 10 meters depth
+oxygen.interp.tb = NULL
+
+for (n in depth){
+
+surface = ctd.mafia.tb %>% filter(pressure == n)
+
+x = surface$lon;y = surface$lat; z = surface$oxygen
+
+oxygen.interp = interpBarnes(x = x, y = y, z = z)
+
+lon = oxygen.interp$xg
+lat = oxygen.interp$yg
+oxygen = oxygen.interp$zg
+
+nlon = length(lon)
+nlat = length(lat)+1
+
+oxygen.interp.df = data.frame(lon, as.data.frame(oxygen)) %>% 
+  gather(key = "key", value = "oxygen", 2:nlat) %>%
+  mutate(lat = rep(lat, each = nlon), depth = n) %>% 
+  select(lon,lat, depth, oxygen)
+
+oxygen.interp.tb = oxygen.interp.tb %>% bind_rows(oxygen.interp.df)
+}
+
+
+```
+
+```{r}
+ggplot()+
+  geom_raster(data = oxygen.interp.tb, 
+              aes(x = lon, y = lat, fill = oxygen), interpolate = TRUE)+
+  geom_contour(data = oxygen.interp.tb,
+               aes(x = lon, y = lat, z = oxygen), col = 1)+
+  theme(legend.position = "top", legend.direction = "horizontal", 
+        legend.key.width = unit(3, "cm"),
+        legend.key.height = unit(.4, "cm"),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 11),
+        axis.text = element_text(size = 11),
+        strip.background = element_rect(colour = NA, fill = NA),
+        strip.text = element_text(size = 11))+
+  scale_fill_gradientn(colours = oceColors9A(120), breaks = seq(1.8,3.5,.2),
+                       guide = "colorbar") + 
+  guides(fill = guide_colorbar(title = expression (~Dissolved~oxygen~(mgm^{-3})), 
+                               title.position = "top", title.hjust = 0.5,title.vjust = 0.25, 
+                               label.vjust = 1, raster = TRUE, frame.colour = NULL,
+                               ticks.colour = 1)) +
+  facet_wrap(~depth)+
+  labs(x = "", y = "")
+
+
+```
+
+### temperature
+```{r}
+
+depth = c(0.5,5,10) # octopus fishery mostly conducted on reefs that are 10 meters depth
+temperature.interp.tb = NULL
+
+for (n in depth){
+
+surface = ctd.mafia.tb %>% filter(pressure == n)
+
+x = surface$lon;y = surface$lat; z = surface$temperature
+
+temperature.interp = interpBarnes(x = x, y = y, z = z)
+
+lon = temperature.interp$xg
+lat = temperature.interp$yg
+temperature = temperature.interp$zg
+
+nlon = length(lon)
+nlat = length(lat)+1
+
+temperature.interp.df = data.frame(lon, as.data.frame(temperature)) %>% 
+  gather(key = "key", value = "temperature", 2:nlat) %>%
+  mutate(lat = rep(lat, each = nlon), depth = n) %>% 
+  select(lon,lat, depth, temperature)
+
+temperature.interp.tb = temperature.interp.tb %>% bind_rows(temperature.interp.df)
+}
+
+
+```
+
+```{r}
+ggplot()+
+  geom_raster(data = temperature.interp.tb, 
+              aes(x = lon, y = lat, fill = temperature), interpolate = TRUE)+
+  geom_contour(data = temperature.interp.tb,
+               aes(x = lon, y = lat, z = temperature), col = 1)+
+  theme(legend.position = "top", legend.direction = "horizontal", 
+        legend.key.width = unit(3, "cm"),
+        legend.key.height = unit(.4, "cm"),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 11),
+        axis.text = element_text(size = 11),
+        strip.background = element_rect(colour = NA, fill = NA),
+        strip.text = element_text(size = 11))+
+  scale_fill_gradientn(colours = oceColors9A(120), breaks = seq(26.5,28.7,.3),
+                       guide = "colorbar") + 
+  guides(fill = guide_colorbar(title = expression (~Temperature~(~degree~C)), 
+                               title.position = "top", title.hjust = 0.5,title.vjust = 0.25, 
+                               label.vjust = 1, raster = TRUE, frame.colour = NULL,
+                               ticks.colour = 1)) +
+  facet_wrap(~depth)+
+  labs(x = "", y = "")
+```
+
+### salinity
+```{r}
+
+depth = c(0.5,5,10) # octopus fishery mostly conducted on reefs that are 10 meters depth
+salinity.interp.tb = NULL
+
+for (n in depth){
+
+surface = ctd.mafia.tb %>% filter(pressure == n)
+
+x = surface$lon;y = surface$lat; z = surface$salinity
+
+salinity.interp = interpBarnes(x = x, y = y, z = z)
+
+lon = salinity.interp$xg
+lat = salinity.interp$yg
+salinity = salinity.interp$zg
+
+nlon = length(lon)
+nlat = length(lat)+1
+
+salinity.interp.df = data.frame(lon, as.data.frame(salinity)) %>% 
+  gather(key = "key", value = "salinity", 2:nlat) %>%
+  mutate(lat = rep(lat, each = nlon), depth = n) %>% 
+  select(lon,lat, depth, salinity)
+
+salinity.interp.tb = salinity.interp.tb %>% bind_rows(salinity.interp.df)
+}
+
+
+```
+
+```{r}
+ggplot()+
+  geom_raster(data = salinity.interp.tb, 
+              aes(x = lon, y = lat, fill = salinity), interpolate = TRUE)+
+  geom_contour(data = salinity.interp.tb,
+               aes(x = lon, y = lat, z = salinity), col = 1)+
+  theme(legend.position = "top", legend.direction = "horizontal", 
+        legend.key.width = unit(3, "cm"),
+        legend.key.height = unit(.4, "cm"),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 11),
+        axis.text = element_text(size = 11),
+        strip.background = element_rect(colour = NA, fill = NA),
+        strip.text = element_text(size = 11))+
+  scale_fill_gradientn(colours = oceColors9A(120), breaks = seq(33.9,35.5,.3),
+                       guide = "colorbar") + 
+  guides(fill = guide_colorbar(title = "Salinity", 
+                               title.position = "top", title.hjust = 0.5,title.vjust = 0.25, 
+                               label.vjust = 1, raster = TRUE, frame.colour = NULL,
+                               ticks.colour = 1)) +
+  facet_wrap(~depth)+
+  labs(x = "", y = "")
+```
+
+### fluorescence
+```{r}
+
+depth = c(0.5,5,10) # octopus fishery mostly conducted on reefs that are 10 meters depth
+fluorescence.interp.tb = NULL
+
+for (n in depth){
+
+surface = ctd.mafia.tb %>% filter(pressure == n)
+
+x = surface$lon;y = surface$lat; z = surface$fluorescence
+
+fluorescence.interp = interpBarnes(x = x, y = y, z = z)
+
+lon = fluorescence.interp$xg
+lat = fluorescence.interp$yg
+fluorescence = fluorescence.interp$zg
+
+nlon = length(lon)
+nlat = length(lat)+1
+
+fluorescence.interp.df = data.frame(lon, as.data.frame(fluorescence)) %>% 
+  gather(key = "key", value = "fluorescence", 2:nlat) %>%
+  mutate(lat = rep(lat, each = nlon), depth = n) %>% 
+  select(lon,lat, depth, fluorescence)
+
+fluorescence.interp.tb = fluorescence.interp.tb %>% bind_rows(fluorescence.interp.df)
+}
+
+
+```
+
+```{r}
+ggplot()+
+  # geom_sf(data = location.mafia)+
+  geom_raster(data = fluorescence.interp.tb, 
+              aes(x = lon, y = lat, fill = fluorescence), interpolate = TRUE)+
+  geom_contour(data = fluorescence.interp.tb,
+               aes(x = lon, y = lat, z = fluorescence), col = 1)+
+  theme(legend.position = "top", legend.direction = "horizontal", 
+        legend.key.width = unit(3, "cm"),
+        legend.key.height = unit(.4, "cm"),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 11),
+        axis.text = element_text(size = 11),
+        strip.background = element_rect(colour = NA, fill = NA),
+        strip.text = element_text(size = 11))+
+  scale_fill_gradientn(colours = oceColors9A(120), 
+                       breaks = seq(0,0.15,length.out = 6) %>% round(digits = 2),
+                       guide = "colorbar") + 
+  guides(fill = guide_colorbar(title = expression (~Fluorescence~(mgm^{-3})), 
+                               title.position = "top", title.hjust = 0.5,title.vjust = 0.25, 
+                               label.vjust = 1, raster = TRUE, frame.colour = NULL,
+                               ticks.colour = 1)) +
+  facet_wrap(~depth)+
+  labs(x = "", y = "")
+```
