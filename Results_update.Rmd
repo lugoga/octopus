@@ -1,0 +1,1918 @@
+---
+title: "literature"
+author: "Masumbuko Semba"
+date: "December 6, 2018"
+output: 
+      bookdown::html_document2
+      # bookdown::pdf_document2
+link-citations: yes
+csl: plos.csl
+bibliography: octopus.bib
+editor_options: 
+  chunk_output_type: inline
+always_allow_html: yes
+---
+
+# Results
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "", options(digits = 2))
+```
+
+
+
+```{r}
+require(oce)
+require(tidyverse)
+require(sf)
+require(lubridate)
+require(ocedata)
+require(xtractomatic)
+require(kableExtra)
+require(ggsci)
+```
+
+```{r eval=TRUE}
+# getwd()
+# save.image(file = "result.RData")
+
+# load all the data required for the this process to the last line. pass an argument "eval = FALSE" to the chunk that fetch data online, because it has downloaded and saved alread.
+load("result.RData")
+```
+
+
+
+```{r}
+# read etopo 1 ascii file
+etopo = sp::read.asciigrid("E:/GIS/ROADMAP/Etopo 1/Tanzania_etopo1/tanz1_-3432.asc")
+# convert the etopo file into tibble
+etopo.df = as.data.frame(etopo)%>%as.tibble()
+
+# tidy the data
+etopo.df = etopo.df%>%
+  rename(lon = s1,lat = s2, bathmetry = E..GIS.ROADMAP.Etopo.1.Tanzania_etopo1.tanz1_.3432.asc)%>%
+  select(lon,lat, bathmetry)
+
+# select the bathmetry value only within the pemba channel area of interest
+bathmetry = etopo.df%>%filter(lon>=39 & lon <=42 & lat >=-11 & lat <= -7 & bathmetry <=0)
+
+```
+
+
+```{r eval=TRUE}
+
+africa = read_sf("E:/Data Manipulation/nyamisi/regional/africa.shp")
+
+tz.ke = africa%>%select(-c(FIPS_CNTRY, REGIONA, EMPTY, EMPTY2))
+
+mimp = st_read("shapefiles/mimp.shp")
+mangroves = st_read("shapefiles/coastal_land_cover.shp")
+coral = st_read("shapefiles/coral_reefs.shp")
+```
+
+```{r}
+ggplot() +
+  geom_raster(data = bathmetry, aes(x = lon, y = lat, fill = bathmetry))+
+  geom_contour(data = bathmetry %>% filter(bathmetry > -100 & bathmetry <5), 
+              aes(x = lon, y = lat, z = bathmetry), linetype = 3,
+              breaks = c(-20), col = "black")+
+  geom_contour(data = bathmetry %>% filter(bathmetry > -2000 & bathmetry <5), 
+              aes(x = lon, y = lat, z = bathmetry), 
+              breaks = seq(-2000,-100, 400), col = "black")+
+  geom_sf(data = tz.ke, col = 1, fill = "grey85")  +
+  # geom_sf(data = mangroves %>% filter(CLASS == "Mangrove")) +
+  geom_sf(data = coral)+
+  coord_sf(xlim = c(39.2,40.2), ylim = c(-8.6,-7.5)) +
+  theme_bw()+
+  theme(legend.direction = "vertical", legend.position = c(.85,.22),
+        legend.background = element_rect(colour = "black")) +
+  scale_fill_gradientn(name = "Depth(m)", limits = c(-2000,0),
+                       colours = oceColorsGebco(120), breaks =seq(-2000,0,500),
+                       label = seq(0,2000,500)%>% rev()) + 
+  scale_x_continuous(breaks = seq(39.25, 40.15, length.out = 4)) +
+  scale_y_continuous(breaks = seq(-8.6, -7.5, length.out = 4)) +
+  labs(x = "", y = "")+
+  annotate(geom = "text", x = 39.9, y = -7.87, label = "Mafia\nIsland")+
+  annotate(geom = "text", x = 39.7, y = -8.45, label = "Songosongo\nIsland")+
+  annotate(geom = "text", x = 39.26, y = -8.23, label = "Somanga")
+
+```
+
+```{r}
+eastern.africa = spData::world %>% filter(name_long %in% c("Tanzania", "Kenya", "Mozambique", "Madagascar"))
+
+ggplot() +
+  geom_sf(data = eastern.africa)+
+  coord_sf(ylim = c(-15, 0), xlim = c(35, 49))+
+  theme_bw()+
+  theme(panel.grid = element_line(colour = NA),
+        axis.text = element_blank(),
+        axis.ticks = element_blank())
+```
+
+
+```{r}
+field = readxl::read_excel("Octopus.xlsx", sheet = 2)
+
+field = field %>% 
+  mutate(Locality = replace(Locality,Locality == "Mbakare Ya Mwamba", "Mwamba Kaskazini"),
+         Locality = replace(Locality,Locality == "Mwamba Wa Pwani", "Mwamba Kaskazini"),
+         Locality = replace(Locality,Locality == "Banda Mrima", "Mlima"),
+         Locality = replace(Locality,Locality == "Nyamalile", "Mnyamalile"),
+         Locality = replace(Locality,Locality == "Makolokoroni", "Mchanga Nyuma"),
+         Locality = replace(Locality,Locality == "Malokoni", "Mchanga Nyuma"),
+         Locality = replace(Locality,Locality == "Kiziji", "Mchanga Nyuma"),
+         Locality = replace(Locality,Locality == "Banyani", "Baniani"))
+
+field.data = field %>%
+  mutate(date = dmy(siku) ) %>% 
+  select(date, month = Month, village = Kijiji, diko = Diko, Locality,
+         vessels = 7,engine.power = 8, 
+         fisher.number = 9, fishing.ground = 11, fish.type = 13,species = 14,
+         Family = 15,weight = 16, number.octopus = 17,cpue = 18) %>% 
+  mutate(catch.rate = weight/fisher.number, month = month(date))%>%
+  filter(fish.type == "Pweza")
+
+
+
+```
+
+
+```{r}
+octopus.ground.sf= st_read("e:/Data Manipulation/mafia_kilwa_octopus_mapping/shapefiles/miamba_topology_clean_updated_added_mafia.shp")
+
+# octopus.ground.sf= st_read("e:/Data/Manipulation/mafia_kilwa_octopus_mapping/shapefiles/shapefiles/miamba_topology_clean_updated_added_mafia_backup.shp")
+
+octopus.ground.sf = octopus.ground.sf%>% mutate(mwamba = as.character(Name),
+         mwamba = replace(mwamba, mwamba == "Vijamba vya Dima", "Vijambani"),
+         mwamba = replace(mwamba, mwamba == "Vijamba vya Mnyamalile", "Vijambani"),
+         mwamba = replace(mwamba, mwamba == "Mto wa Fungu", "Mto Wa Fungu"),
+         mwamba = replace(mwamba, mwamba == "Mchanga nyumba", "Mchanga Nyuma"),
+         mwamba = replace(mwamba, mwamba == "Mto wa Fungu", "Mto Wa Fungu"),
+         mwamba = replace(mwamba, mwamba == "Chamba cha Chocha", "Chamba Cha Chocha")) %>%
+  mutate(type = as.character(type),
+         type = replace(type, type == "outer coral", "reef flat"),
+         type = replace(type, type == "inner coral", "submerged reef")) %>%
+  mutate(Area = replace(Area, Area == "Maji haba", NA))
+
+octopus.ground.names = octopus.ground.sf 
+
+st_geometry(octopus.ground.names) = NULL
+
+octopus.ground.coordinates =  octopus.ground.sf %>% 
+  st_centroid() %>% st_coordinates() %>% 
+  as.data.frame() %>% 
+  rename(lon = 1, lat = 2)
+
+octopus.ground.names.df = octopus.ground.coordinates %>% 
+  bind_cols(octopus.ground.names) %>% 
+  select(-Habitats)
+
+```
+
+
+
+```{r}
+# octopus.ground.names.df %>%select(lon,lat, Area, type, mwamba) %>% 
+#   left_join(field.data %>% rename(mwamba = Locality, Area = village) %>% select(mwamba, Area, cpue) %>%
+#   group_by(mwamba) %>% summarise(cpue = mean(cpue))) %>% filter(!is.na(cpue))
+
+
+octopus.ground.cpue.sf = octopus.ground.sf %>%
+    select(Area, type, mwamba) %>% 
+  left_join(field.data %>% 
+              rename(mwamba = Locality, Area = village) %>% 
+              select(mwamba, Area, cpue) %>%
+              group_by(mwamba, Area) %>% 
+              summarise(cpue = mean(cpue)), 
+            by = c("mwamba", "Area")) 
+  
+
+```
+
+```{r miamba-jibondo, fig.cap="Map showing a) reefs commonly used for octopus fishery and b) catch rate around Jibondo"}
+
+miamba.jibondo.map = ggplot() + 
+  geom_sf(data = octopus.ground.sf %>% filter(type != "Island"), aes(fill = type))+
+  geom_sf(data = tz.ke, fill = "#DFC27D")+
+  coord_sf(xlim = c(39.6, 39.8), ylim = c(-8.15, -7.95))+
+  scale_fill_manual(values = c("#FFFFCC","#B2DF8A","#66C2A5"),
+                    label = c("Shallow Areas", "Reef flat", "Subermeged Reef"), 
+                    name = "Habitat type")+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+        legend.position = c(.78,.16), 
+        legend.background = element_rect(colour = 1), 
+        legend.title = element_text(face = "bold"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% filter(Area == "Jibondo"), 
+                           aes(x = lon, y = lat, label = mwamba)) +
+  annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland")+
+  labs(x = "", y = "")+
+  scale_x_continuous(breaks = seq(39.6, 39.8,length.out = 4) %>% round(2))+
+  scale_y_continuous(breaks = seq(-8.15, -7.95, length.out = 4) %>% round(2))
+
+miamba.jibondo.cpue = ggplot()+
+  geom_sf(data = octopus.ground.cpue.sf, col = 1, fill = "grey85") +
+  geom_sf(data = octopus.ground.cpue.sf %>% filter(Area == "Jibondo"), 
+          aes(fill = as.factor(cpue)))+
+  geom_sf(data = tz.ke, fill = "#DFC27D")+
+  coord_sf(xlim = c(39.6, 39.8), ylim = c(-8.15, -7.95))+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+        legend.position = c(.88,.15), 
+        legend.background = element_rect(colour = NA, fill = "lightblue"), 
+        legend.title = element_text(face = "bold"),
+        legend.direction = "vertical",
+        legend.key.width = unit(.85, "cm"),
+        legend.key.height =  unit(.4, "cm"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% filter(Area == "Jibondo"), 
+                           aes(x = lon, y = lat, label = mwamba)) +
+  annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland")+
+  labs(x = "", y = "")+
+  scale_x_continuous(breaks = seq(39.6, 39.8,length.out = 4) %>% round(2))+
+  scale_y_continuous(breaks = seq(-8.15, -7.95, length.out = 4) %>% round(2))+
+  scale_fill_manual(values = c("red", "yellow", "orange", "green"), 
+                    label = c("3.0","3.2","3.5","7.2"), 
+                    name = "Catch rate",
+                    na.value = "grey85")
+
+cowplot::plot_grid(miamba.jibondo.map, miamba.jibondo.cpue, nrow = 1, labels = c("a)", "b)"),
+                   label_x = .2, label_y = .30, label_fontface = "plain", label_size = 12)
+```
+
+
+```{r miamba-bwejuu, fig.cap="Map showing a) reefs commonly used for octopus fishery and b) catch rate around Bwejuu Island"}
+
+miamba.bwejuu.map = ggplot() + 
+  geom_sf(data = octopus.ground.sf %>% filter(type != "Island" & Area == "Bwejuu"), 
+          aes(fill = type))+
+  geom_sf(data = tz.ke, fill = "#DFC27D")+
+  coord_sf(xlim = c(39.45, 39.58), ylim = c(-8.1, -7.92))+
+  scale_fill_manual(values = c("#B2DF8A","#66C2A5"),
+                    label = c("Reef flat", "Subermeged Reef"), 
+                    name = "Habitat type")+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+        legend.position = c(.29,.12), 
+        legend.background = element_rect(colour = 1), 
+        legend.title = element_text(face = "bold"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% filter(Area == "Bwejuu" & mwamba != "Sefu" & mwamba != "Ngusi" ), 
+                           aes(x = lon, y = lat, label = mwamba)) +
+  annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland")+
+  labs(x = "", y = "")+
+  scale_x_continuous(breaks = seq(39.45, 39.58,length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.1, -7.92, length.out = 4))
+
+miamba.bwejuu.cpue = ggplot() +
+  # geom_sf(data = octopus.ground.cpue.sf %>% filter(Area == "Bwejuu"), 
+  #         aes(fill = cpue))+
+  geom_sf(data = octopus.ground.cpue.sf, col = 1, fill = "grey85") +
+  geom_sf(data = octopus.ground.cpue.sf %>% filter(Area == "Bwejuu") %>% 
+            mutate(group = cut(cpue, c(0,3,5,6,8)))           , 
+          aes(fill = as.factor(group)))+
+  geom_sf(data = tz.ke, fill = "#DFC27D") +
+  coord_sf(xlim = c(39.45, 39.58), ylim = c(-8.1, -7.92))+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+        legend.position = c(.82,.15), 
+        legend.background = element_rect(fill = "lightblue",colour = NA), 
+        legend.title = element_text(face = "bold"),
+        legend.direction = "vertical",
+        legend.key.width = unit(.85, "cm"),
+        legend.key.height =  unit(.4, "cm"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% 
+                             filter(Area == "Bwejuu" & mwamba != "Sefu" & mwamba != "Ngusi" ), 
+                           aes(x = lon, y = lat, label = mwamba)) +
+  labs(x = "", y = "")+
+  scale_x_continuous(breaks = seq(39.45, 39.58,length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.1, -7.92, length.out = 4)) +
+  scale_fill_manual(values = c("red", "yellow", "orange", "green"), 
+                    label = c("3.0","4.5","5.5","7.0"), 
+                    name = "Catch rate",
+                    na.value = "grey85")
+
+cowplot::plot_grid(miamba.bwejuu.map, miamba.bwejuu.cpue, nrow = 1, labels = c("a)", "b)"),
+                   label_x = .2, label_y = .98, label_fontface = "plain", label_size = 12)
+```
+
+```{r miamba-somanga, fig.cap="Map showing a) reefs commonly used for octopus fishery and b) catch rate around Somanga in Kilwa", fig.width=7.5, fig.height=7}
+
+miamba.somanga.map = ggplot() +
+  geom_sf(data = octopus.ground.sf %>% filter(type %in% c("reef flat", "submerged reef")), 
+          aes(fill = type))+
+  geom_sf(data = tz.ke, fill = "#DFC27D") +
+  coord_sf(xlim = c(39.325, 39.60), ylim = c(-8.46, -8.34))+
+  scale_fill_manual(values = c("#B2DF8A","#66C2A5"),
+                    label = c("Reef flat", "Subermeged Reef"), 
+                    name = "Habitat type")+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+        legend.position = c(.87,.17), 
+        legend.background = element_rect(colour = 1), 
+        legend.title = element_text(face = "bold"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% filter(Area == "Somanga"), 
+                           aes(x = lon, y = lat, label = mwamba)) +
+  # annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland")+
+  labs(x = "", y = "") +
+  scale_x_continuous(breaks = seq(39.35, 39.60,length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.46, -8.34, length.out = 4))
+
+miamba.somanga.cpue = ggplot() +
+  # geom_sf(data = octopus.ground.cpue.sf %>% filter(Area == "Bwejuu"), 
+  #         aes(fill = cpue))+
+  geom_sf(data = octopus.ground.cpue.sf, col = 1, fill = "grey85") +
+  geom_sf(data = octopus.ground.cpue.sf %>% filter(Area == "Somanga") %>% 
+    mutate(group = cut(cpue, c(0,2,3,4,6))) %>% arrange(desc(cpue)), 
+          aes(fill = as.factor(group)))+
+  geom_sf(data = tz.ke, fill = "#DFC27D") +
+  coord_sf(xlim = c(39.325, 39.60), ylim = c(-8.46, -8.34))+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+        legend.position = c(.92,.22), 
+        legend.background = element_rect(fill = "lightblue",colour = NA), 
+        legend.title = element_text(face = "bold"),
+        legend.direction = "vertical",
+        legend.key.width = unit(.85, "cm"),
+        legend.key.height =  unit(.4, "cm"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% 
+                             filter(Area == "Somanga"), 
+                           aes(x = lon, y = lat, label = mwamba)) +
+  scale_x_continuous(breaks = seq(39.35, 39.60,length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.46, -8.34, length.out = 4)) +
+  scale_fill_manual(values = c("red", "yellow", "orange", "green"), 
+                    label = c("2","3","4","6"), 
+                    name = "Catch rate",
+                    na.value = "grey85")+
+  labs(x = "", y = "")
+
+cowplot::plot_grid(miamba.somanga.map, miamba.somanga.cpue, nrow = 2, labels = c("a)", "b)"),
+                   label_x = .2, label_y = .98, label_fontface = "plain", label_size = 12)
+```
+
+
+```{r miamba-songosongo, fig.cap="Map showing a) reefs commonly used for octopus fishery and b) catch rate around Songosongo in Kilwa", fig.width=7.5, fig.height=7}
+
+miamba.songosongo.map = ggplot() +
+  geom_sf(data = octopus.ground.sf %>% filter(type %in% c("reef flat", "submerged reef")), 
+          aes(fill = type))+
+  geom_sf(data = tz.ke, fill = "#DFC27D") +
+  coord_sf(xlim = c(39.34, 39.61), ylim = c(-8.66, -8.45))+
+  scale_fill_manual(values = c("#B2DF8A","#66C2A5"),
+                    label = c("Reef flat", "Subermeged Reef"), 
+                    name = "Habitat type")+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+        legend.position = c(.18,.13), 
+        legend.background = element_rect(colour = 1), 
+        legend.title = element_text(face = "bold"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% 
+                             filter(Area == "Songosongo"), 
+                           aes(x = lon, y = lat, label = mwamba)) +
+  # annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland")+
+  labs(x = "", y = "") +
+  scale_x_continuous(breaks = seq(39.35, 39.60,length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.65, -8.45, length.out = 4))
+
+miamba.songosongo.cpue = ggplot() +
+  # geom_sf(data = octopus.ground.cpue.sf %>% filter(Area == "Bwejuu"), 
+  #         aes(fill = cpue))+
+  geom_sf(data = octopus.ground.cpue.sf, col = 1, fill = "grey85") +
+  geom_sf(data = octopus.ground.cpue.sf %>% filter(Area == "Songosongo") %>% 
+    mutate(group = cut(cpue, c(0,2,5,6,8))) %>% arrange(desc(cpue)), 
+          aes(fill = as.factor(group)))+
+  geom_sf(data = tz.ke, fill = "#DFC27D") +
+  coord_sf(xlim = c(39.34, 39.61), ylim = c(-8.66, -8.45))+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+        legend.position = c(.2,.22), 
+        legend.background = element_rect(fill = "lightblue",colour = NA), 
+        legend.title = element_text(face = "bold"),
+        legend.direction = "vertical",
+        legend.key.width = unit(.85, "cm"),
+        legend.key.height =  unit(.4, "cm"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% 
+                             filter(Area == "Songosongo"), 
+                           aes(x = lon, y = lat, label = mwamba)) +
+  scale_x_continuous(breaks = seq(39.35, 39.60,length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.65, -8.45, length.out = 4)) +
+  scale_fill_manual(values = c("red", "yellow", "orange", "green"), 
+                    label = c("3","5","6"), 
+                    name = "Catch rate",
+                    na.value = "grey85") +
+  labs(x = "", y = "")
+
+cowplot::plot_grid(miamba.songosongo.map, miamba.songosongo.cpue, 
+                   nrow = 1, labels = c("a)", "b)"),
+                   label_x = .2, label_y = .7, label_fontface = "plain", label_size = 12)
+
+```
+
+```{r}
+
+field.data %>% filter(village == "Songosongo") %>% distinct(Locality)
+
+```
+
+## Fisat
+### Biomass
+### Jibondo
+```{r, fig.align="center", fig.height=8, fig.height=4}
+
+load( file = "recreate_graphics.RData")
+
+# jibondo.biomas = digitize::digitize("fisat/Relative_biomass Jibondo.JPG")
+jibondo.bioma = jibondo.biomas %>% 
+  mutate(type = rep(c("a", "b"), c(8,8))) 
+
+aa = jibondo.bioma %>% filter(type == "a")
+bb = jibondo.bioma %>% filter(type == "b")
+
+jibondo.bioma.clean =  spline(aa$x, aa$y, n = 30) %>% as.data.frame() %>% mutate(type = "a") %>% 
+  bind_rows(spline(bb$x, bb$y, n = 30) %>% as.data.frame() %>% mutate(type = "b")) %>%
+  as.tibble()
+
+jibondo.biomass.fig = ggplot(data =jibondo.bioma.clean, aes(x = x, y = y, col = type))+
+  geom_line(size = .9) +
+  # theme_bw()+
+  theme(panel.background = element_rect(colour = 1),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.position = "none")+
+  labs(x = "Exploitation Ratio (E)", y = "Relative Yield/Recruit")
+
+```
+
+
+### Bwejuu
+```{r, fig.align="center", fig.height=8, fig.height=4}
+
+# Bwejuu.biomas = digitize::digitize("fisat/Relative_biomass Bwejuu.JPG")
+Bwejuu.bioma = Bwejuu.biomas %>% 
+  mutate(type = rep(c("a", "b"), c(9,9))) 
+
+aa = Bwejuu.bioma %>% filter(type == "a")
+bb = Bwejuu.bioma %>% filter(type == "b")
+
+Bwejuu.bioma.clean =  spline(aa$x, aa$y, n = 30) %>% as.data.frame() %>% mutate(type = "a") %>% 
+  bind_rows(spline(bb$x, bb$y, n = 30) %>% as.data.frame() %>% mutate(type = "b")) %>%
+  as.tibble()
+
+bwejuu.biomass.fig = ggplot(data =Bwejuu.bioma.clean, aes(x = x, y = y, col = type))+
+  geom_line(size = .9) +
+  labs(x = "Exploitation Ratio (E)", y = "Relative Yield/Recruit")+
+  # theme_bw()+
+  theme(panel.background = element_rect(colour = 1),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.position = "none")
+
+```
+
+
+```{r, fig.height=2.5, fig.width=2.5}
+#bwejuu.mortality = digitize::digitize("fisat/Motality_Bwejuu.JPG")
+
+bwejuu.morta = bwejuu.mortality %>% 
+  mutate(type = rep(c("a", "b", "c"), c(6,3,6))) 
+
+bwejuu.mortality.fig = ggplot()+
+  geom_line(data = bwejuu.morta %>% filter(type == "b"),
+            aes(x = x, y =y), col = 1)+ 
+  geom_point(data = bwejuu.morta, aes(x =x, y = y, col = type), size = 4) + 
+  theme(panel.background = element_rect(colour = 1),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.position = "none") +
+  labs(x = expression(~Relative~age~(years-t~{0})), y = expression(~ln~(~N/Delta*t)))+
+  scale_y_continuous(limits = c(2,11),breaks = seq(2,10,2))
+```
+
+
+```{r, fig.height=2.5, fig.width=2.5}
+#jibondo.mortality = digitize::digitize("fisat/Motality_Jibondo.JPG")
+
+jibondo.morta = jibondo.mortality %>% 
+  mutate(type = rep(c("a", "b", "c"), c(7,3,7))) 
+
+jibondo.mortality.fig = ggplot()+
+  geom_line(data = jibondo.morta %>% filter(type == "b"),
+            aes(x = x, y =y), col = 1)+ 
+  geom_point(data = jibondo.morta, aes(x =x, y = y, col = type), size = 4) + 
+  theme(panel.background = element_rect(colour = 1),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.position = "none") +
+  labs(x = expression(~Relative~age~(years-t~{0})), y = expression(~ln~(~N/Delta*t)))+
+  scale_y_continuous(limits = c(1,11),breaks = seq(2,10,2))+
+  scale_x_continuous(breaks = seq(.2,2.5,.4))
+
+
+
+```
+
+```{r}
+
+require(ggsci)
+#  bwejuu.vpa = digitize::digitize("fisat/VPA_Bwejuu.JPG")
+
+vpa.bwejuu.df = bwejuu.vpa %>% 
+  mutate(type = rep(c("Survivors", "Natural loss", "Catches",  "Fishing.mortality"), c(9,9,9,9))) %>% mutate(group = rep(seq(4,20,2),4) %>% as.integer())
+
+vpa.bwejuu.df.wide = vpa.bwejuu.df%>%select(type,y, group) %>% spread(key = type, value = y) %>% mutate(na.loss = `Natural loss`-Survivors, catch = Catches - `Natural loss`) %>% select(-c(`Natural loss`,Catches)) 
+  
+  
+ vpa.bwejuu.df.long = vpa.bwejuu.df.wide%>% gather(key = "variables", value = "values",2:5)
+
+bwejuu.vpa.fig = ggplot()+
+  geom_col(data = vpa.bwejuu.df.long %>% filter(variables != "Fishing.mortality"), 
+       aes(x = group,y = values, fill = variables))+
+  geom_line(data = vpa.bwejuu.df.long %>% filter(variables == "Fishing.mortality"), 
+            aes(x = group, y = values), col = "black", size = 1)+
+  scale_fill_aaas()+
+  theme(panel.background = element_rect(colour = 1),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.position = "none") +
+  labs(x = expression(~Relative~age~(years-t~{0})), y = expression(~ln~(~N/Delta*t)))+
+  scale_x_continuous(breaks = seq(4,20,4))+
+  scale_y_continuous(limits = c(0,1.6),
+                     breaks = seq(0,1.6,.3), name = expression(~Population~(~N~x~10^{5})), 
+                     sec.axis = sec_axis(~./1, name = expression(~Fishing-Mortality~(~F/year))))
+  
+
+```
+
+```{r}
+
+#  jibondo.vpa = digitize::digitize("fisat/VPA_jibondo.JPG")
+
+vpa.jibondo.df = jibondo.vpa %>% 
+  mutate(type = rep(c("Survivors", "Natural loss", "Catches",  "Fishing.mortality"), c(9,9,9,9))) %>% mutate(group = rep(seq(4,20,2),4) %>% as.integer())
+
+vpa.jibondo.df.wide = vpa.jibondo.df%>%select(type,y, group) %>% spread(key = type, value = y) %>% mutate(na.loss = `Natural loss`-Survivors, catch = Catches - `Natural loss`) %>% select(-c(`Natural loss`,Catches)) 
+  
+  
+ vpa.jibondo.df.long = vpa.jibondo.df.wide%>% gather(key = "variables", value = "values",2:5)
+
+jibondo.vpa.fig = ggplot()+
+  geom_col(data = vpa.jibondo.df.long %>% filter(variables != "Fishing.mortality"), 
+       aes(x = group,y = values, fill = variables))+
+  geom_line(data = vpa.jibondo.df.long %>% filter(variables == "Fishing.mortality"), 
+            aes(x = group, y = values), col = "black", size = 1)+
+  scale_fill_aaas()+
+  theme(panel.background = element_rect(colour = 1),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.position = "none") +
+  labs(x = expression(~Relative~age~(years-t~{0})), y = expression(~ln~(~N/Delta*t)))+
+  scale_x_continuous(breaks = seq(4,20,4))+
+  scale_y_continuous(limits = c(0,3),
+                     breaks = seq(0,3,.5), name = expression(~Population~(~N~x~10^{5})), 
+                     sec.axis = sec_axis(~./.75, name = expression(~Fishing-Mortality~(~F/year))))
+  
+```
+
+
+```{r, fig.align="center", fig.height=3.0, fig.width=9}
+cowplot::plot_grid(jibondo.biomass.fig, jibondo.mortality.fig, jibondo.vpa.fig, nrow = 1)
+```
+
+
+```{r, fig.align="center", fig.height=3.0, fig.width=9}
+cowplot::plot_grid(bwejuu.biomass.fig, bwejuu.mortality.fig, bwejuu.vpa.fig, nrow = 1)
+```
+
+```{r tab11}
+jibondo.freq = jibondo.bwejuu %>% filter(village == "Jibondo") %>% group_by(locality) %>% summarise(Fisher = n()) %>% ungroup() %>% mutate(percentage.fisher = Fisher/sum(Fisher)*100) %>% arrange(desc(percentage.fisher))
+
+jibondo.freq %>%
+  kable( "html", caption = "Coral reefs that are mostly used for octopus fishery as fishing  ground in Jibondo Island ", col.names = c("Fishing ground", "Number", "Percentage"), align = "c") %>%
+  column_spec(column = 1, width = "5cm") %>%
+  column_spec(column = 2:3, width = "4cm") %>%
+  add_header_above(c("", "Octopus fishery" = 2))
+
+
+```
+
+
+
+```{r eval=FALSE}
+ctd.points %>% select(name)
+
+miamba = c("Chocha", "Chocha", "Fungu Mbili", "Fungu Mbili", "Baniani", 
+           "Mziwani", "Mziwani", "Mchanga Muovu", "Mchanga Muovu", "Chamba cha Machange",
+           "Chamba cha Machange", "Kesi_mziwaji", "Mwamba wa Machange", 
+           "Mwamba wa Machange",  "Chocha_Masimiti",  "Chocha_Masimiti","Chocha Kubwa",
+           "Chocha Kubwa", "Hassn bin Ally", "Miza ndogo", "Miza ndogo", "Miza kubwa",
+           "Miza kubwa","Fisi", "NA", "Fisi", "Bandari", "Pwayasi", "Pwayasi", "Pwajuu",
+           "Pwajuu", "Pupu","Pupu", "Njovi", "Makato", "Imbi", "Mwalimu", "Wembe",
+           "Sirima", "Mtotoka", "Mtotoka", "Banda", "Banda", "Kabwanga", "Kabwanga",
+           "Wibi", "ctd", "ctd", "Mwembe uso", "Ctd")
+
+type = c("ctd", "ctd", "ctd", "mwamba", "ctd", "ctd", "mwamba", "ctd", "mwamba",
+         "mwamba", "ctd", "ctd", "mwamba", "ctd", "mwamba", "ctd", "mwamba", "ctd",
+         "mwamba", "mwamba", "ctd", "mwamba", "ctd", "ctd", NA, "ctd", "ctd", "mwamba",
+         "ctd", "mwamba", "ctd", "mwamba", "ctd", "ctd","ctd", "ctd", "ctd", "ctd", 
+         "mwamba", "mwamba", "ctd", "mwamba", "ctd", "mwamba", "ctd", "mwamba", "ctd",
+         "ctd", "mwamba", "ctd")
+
+data.frame(origin = ctd.points %>% select(name), miamba, type)
+
+
+field.data %>% distinct(fishing.ground)
+```
+
+
+
+## Ocean current
+
+The location of the Kilwa and Mafia is influenced by wht surface currents that pass accross the area 
+```{r eval=FALSE}
+## load drifter data
+drifter = read_table2("E:/Data Manipulation/drifter/tropind_drifters.txt", col_names = FALSE)
+
+## insert variable names
+drifter = drifter %>% select(id = X1, lon = X2, lat = X3, year= X8, month =   X9, 
+                                   day =  X10, hour = X11, drogue = X4, u =X5, v = X6,   sst = X7)
+```
+
+```{r eval=FALSE}
+
+## create season
+drifter = drifter %>% 
+  mutate(season = month, 
+         season = replace(season,season %in% c(11,12,1,2,3), "NE"),
+         season = replace(season,season %in% c(4,10), "IN"),
+         season = replace(season,season %in% c(5,6,7,8,9), "SE"))
+
+## subset for the Area of interest
+drifter.rumaki = drifter %>% filter(lon >38.25 & lon <40 & lat > -9.3 & lat < -7.5 ) 
+
+#write_csv(drifter.rumaki, "E:/Data Manipulation/mafia_kilwa_octopus_mapping/drifter_rumaki.csv")
+
+
+```
+
+The surface currents in the area vary with seasons with surface speeds exceeding 1 m/s in southeast monsoon season. Figure \@ref(fig:mafia-current) reveal that ocean current varies with season with the lowest speed of below 0.25 m/s in February and March and the highest speed above 1.0 m/s in April and June. In general the southeast season (May, Jun, July and August) has relatively higher speed compared tot the northeast season (February, March, November and December)
+
+```{r mafia-current, fig.align="center", fig.width=7.5, fig.height=2, fig.cap="Surface current in the Mafia Channel during the northeast, inter and southeast monsoon seasons"}
+
+drifter.rumaki = read_csv("E:/Data Manipulation/mafia_kilwa_octopus_mapping/drifter_rumaki.csv")
+## mkondo maji
+mkondo = drifter.rumaki %>% 
+  mutate(date = make_date(year,month, day), 
+         month = month(date)) %>% 
+  group_by(season, month) %>% 
+  summarise(u = median(u, na.rm = TRUE), v = median(v, na.rm = TRUE))
+
+## january is missing, make a january without values
+jan = data.frame(season = "NE", month = 1, u = NA, v = NA)
+
+mkondo  = jan%>% bind_rows(mkondo)
+
+mkondo$month = as.integer(mkondo$month)
+
+ggplot() + 
+  geom_segment(data = mkondo, 
+               aes(x = month, xend = month+u, y = 0, yend = 0+v, colour = season), 
+               arrow = arrow(length = unit(0.35, "cm"), type = "open"), size = 1) +
+  theme_bw()+
+  scale_x_continuous(breaks = 1:12, 
+                     labels = month(seq(dmy(010118), dmy(151218), by = "month"), 
+                                    label = TRUE, abbr = TRUE)) +
+  scale_y_continuous(breaks = seq(0.25, 1.0,.25))+
+  labs(x = "", y = expression(Current~(ms^{-1})))+
+  scale_color_discrete(name = "")+
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_line(linetype = "dashed"),
+        axis.text = element_text(size = 11, colour = 1),
+        axis.title = element_text(size = 12, colour = 1), 
+        legend.position = c(.85,.83),
+        legend.direction = "horizontal",
+        legend.background = element_rect(fill = NA, colour = 1))
+```
+
+Like the the East African Coastal Current (EACC), surface current in the Mafia runs northward throughout the year with some exception during the northeast season, where the reverse of wind force water to flow southeastward direction at relatively low speed (Figure \@ref(fig:current-map-mafia)a). Most of the vector fields showing the surface current flows with water off the Mafia channel with exception during the southeast where drifters observed current in the mafia channel (Figure \@ref(fig:current-map-mafia)c)
+
+```{r current-map-mafia, fig.width=9, fig.cap="surface current within Bwejuu and Jibondo during the a) northeast, b)inter and c) southeast monsoon seasons"}
+ne.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "NE" | season == "IN"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55))
+
+in.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "IN"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55))
+
+
+se.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "SE"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55))
+
+cowplot::plot_grid(ne.current, in.current,se.current, nrow = 1, 
+                   labels = c("a)", "b)", "c)"), label_x = .30, label_y = .72, 
+                   label_size = 12, label_fontface = "plain")
+```
+
+Like the Mafia, seasonal surface current current in Somanga and Songosongo runs nortward throughtout the year (Figure \@ref(fig:current-map-kilwa))
+
+```{r current-map-kilwa, fig.width=9, fig.cap="surface current within Somanga and Songosongo during the a) northeast, b)inter and c) southeast monsoon seasons"}
+ne.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "NE" | season == "IN"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.8, -8.3))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.75, -8.35))
+
+in.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "IN"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.8, -8.3))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.75, -8.35))
+
+
+se.current = ggplot() +
+  geom_segment(data = drifter.rumaki %>% filter(season == "SE"), aes(x = lon, xend = lon+u/15, y = lat, yend = lat+v/15), arrow = arrow(length = unit(0.25, "cm"), type = "open"))+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.8, -8.3))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "vertical",
+        legend.position = "none",
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.75, -8.35))
+
+cowplot::plot_grid(ne.current, in.current,se.current, nrow = 1, 
+                   labels = c("a)", "b)", "c)"), label_x = .28, label_y = .65, 
+                   label_size = 12, label_fontface = "plain")
+```
+
+## Environmental Variables
+### Sea Surface Temperature
+
+
+
+```{r , eval = FALSE}
+
+# getInfo("mhsstdmday")
+
+
+
+sst.mod = xtracto_3D(dtype = "mhsstdmday",
+                     xpos = c(39,41),
+                     ypos = c(-9,-7.5),
+                     tpos = c("2015-01-01", "2018-10-10"))
+
+lon = sst.mod$longitude
+lat = sst.mod$latitude
+time = sst.mod$time %>% as.Date()
+sst = sst.mod$data
+
+# dim(sst)
+
+
+```
+
+
+```{r}
+n.lat = length(lat)
+n.lat = n.lat+1
+n.lon = length(lon)
+
+sst.tb = NULL
+
+for (i in 1:length(time)){
+sst.df = sst[,,i] %>% as.data.frame()
+
+sst.long = data.frame(lon, sst.df) %>% 
+  gather(key = "key", value = "sst",2:n.lat ) %>% 
+  mutate(lat = rep(lat,each = n.lon ), date = time[i]) %>% 
+  select(date, lon,lat, sst)
+
+sst.tb = sst.tb %>% bind_rows(sst.long)
+
+}
+
+```
+
+
+```{r}
+sst.mean = sst.tb %>% 
+  mutate(year = year(date), month = month(date)) %>% 
+  group_by(year, month) %>% 
+  summarise(sst = mean(sst, na.rm = TRUE))
+```
+
+Figure \@ref(fig:fig-sst) shows the monthly value of sst between 2015 and 2018. The surface temperature show a seasonal pattern of low and high values. The temperature is relatively low between May and October and gradually start warming from November to February and reach maximum in March. 
+
+```{r fig-sst, fig.height=2.5, fig.width=7,, fig.align="center", fig.cap="Monthly sea surface temperature within the areas of Somanga and Songosongo between 2015 and 2018"}
+ggplot()+
+  geom_raster(data = sst.mean, aes(x = month, y = year, fill = sst))+
+  scale_y_reverse()+
+  scale_x_continuous(limits =,breaks = 1:12, position = "top", 
+                     labels = month(seq(dmy(010118), dmy(151218), by = "month"), abbr = TRUE, label = TRUE))+
+  scale_fill_gradientn(colours = oce.colorsJet(120))+
+  # scale_fill_viridis_c()+
+  # theme_bw()+
+  theme(panel.background = element_blank(),
+        axis.text = element_text(size = 11))+
+  labs(x = "", y = "")
+
+
+```
+
+The surface temperature of surface water around Mafia Island vary with season, on average, the surface water is warmer during the northeast (Figure \@ref(fig:sst-mafia)a) than southeast (Figure \@ref(fig:sst-mafia)b). However, the temperature differrence is not homogenous, with the areas surrounding the Bwejuu Island and western side of Mafia Island experience low temperature difference between the two seasons (Figure \@ref(fig:sst-mafia))
+
+```{r sst-mafia, fig.cap="Sea surface temperature around Mafia Island for a) March b) August and and c) is the difference in temperature between March and August. The griided data were processed from MODIS"}
+
+sst.tb = sst.tb %>% 
+  mutate(year = year(date) %>% as.integer(), month = month(date, label = TRUE, abbr = TRUE))
+
+
+mar.g = ggplot() +
+  geom_raster(data = sst.tb %>% filter(year == 2015 & month == "Mar" & sst <= 31) , 
+              aes(x = lon, y = lat, fill = sst), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55)) +
+  scale_fill_gradientn(breaks = c(29,30,31),colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Temperature~(~degree~C)), title.position = "top", title.hjust = 0.5))
+
+aug.g = ggplot() +
+  geom_raster(data = sst.tb %>% filter(year == 2015 & month == "Aug" & sst <= 31) , 
+              aes(x = lon, y = lat, fill = sst), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55)) +
+  scale_fill_gradientn(breaks = c(26.3,27.5),colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Temperature~(~degree~C)), title.position = "top", title.hjust = 0.5))
+
+
+## compute the difference of sst between March and August 2018
+sst.mar = sst.tb %>% filter(year == 2018 & month == "Mar") %>% rename(mar = sst)
+sst.aug = sst.tb %>% filter(year == 2018 & month == "Aug") %>% rename(aug = sst)
+
+sst.anomaly =  sst.mar%>%
+  bind_cols(sst.aug )%>% 
+  select(lon,lat, mar, aug) %>% mutate(anomaly = mar-aug)
+
+
+diff.g = ggplot() +
+  geom_raster(data = sst.anomaly , 
+              aes(x = lon, y = lat, fill = anomaly), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55)) +
+  scale_fill_gradientn(breaks = c(1.5,3,4.5),colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Difference~(~degree~C)), title.position = "top", title.hjust = 0.5))
+
+
+cowplot::plot_grid(mar.g, aug.g,diff.g, nrow = 1, 
+                   labels = c("a)", "b)", "c)"), label_x = .23, label_y = .62, 
+                   label_size = 12, label_fontface = "plain")
+```
+
+The surface temperature of surface water around Kilwa vary with season, the surface water is warmer during the northeast (Figure \@ref(fig:sst-kilwa)a) than southeast (Figure \@ref(fig:sst-kilwa)b). However, the temperature differrence is not homogenous, with the coastal water experience a less temperature difference between the two seasons (Figure \@ref(fig:sst-kilwa))
+
+```{r sst-kilwa, fig.cap="Sea surface temperature around Kilwa for a) March b) August and c) is the difference in temperature between March and August. The griided data were processed from MODIS"}
+
+sst.tb = sst.tb %>% 
+  mutate(year = year(date) %>% as.integer(), month = month(date, label = TRUE, abbr = TRUE))
+
+
+mar.g = ggplot() +
+  geom_raster(data = sst.tb %>% filter(year == 2018 & 
+                                         month == "Mar" & 
+                                         sst <= 31 & 
+                                         lon >39.2 & lon <39.8 & 
+                                         lat >-8.9 & lat < -8.2) , 
+              aes(x = lon, y = lat, fill = sst), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+   coord_sf(xlim = c(39.25, 39.7), ylim = c(-8.8, -8.3))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.65))+
+   scale_y_continuous(breaks = c(-8.75, -8.35)) +
+  scale_fill_gradientn(breaks = c(29,30),colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Temperature~(~degree~C)), title.position = "top", title.hjust = 0.5))
+
+aug.g = ggplot() +
+  geom_raster(data = sst.tb %>% filter(year == 2018 & 
+                                         month == "Aug" & 
+                                         sst <= 31 & 
+                                         lon >39.2 & lon <39.8 & 
+                                         lat >-8.9 & lat < -8.2) , 
+              aes(x = lon, y = lat, fill = sst), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+   coord_sf(xlim = c(39.25, 39.7), ylim = c(-8.8, -8.3))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.65))+
+   scale_y_continuous(breaks = c(-8.75, -8.35)) +
+  scale_fill_gradientn(breaks = c(26.3,27.5),colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Temperature~(~degree~C)), title.position = "top", title.hjust = 0.5))
+
+
+## compute the difference of sst between March and August 2018
+sst.mar = sst.tb %>% filter(year == 2018 & month == "Mar") %>% rename(mar = sst)
+sst.aug = sst.tb %>% filter(year == 2018 & month == "Aug") %>% rename(aug = sst)
+
+sst.anomaly =  sst.mar%>%
+  bind_cols(sst.aug )%>% 
+  select(lon,lat, mar, aug) %>% mutate(anomaly = mar-aug)
+
+
+diff.g = ggplot() +
+  geom_raster(data = sst.anomaly %>% filter(lon >39.2 & lon <39.8 & lat >-8.9 & lat < -8.2) , 
+              aes(x = lon, y = lat, fill = anomaly), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+ coord_sf(xlim = c(39.25, 39.7), ylim = c(-8.8, -8.3))+  
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.65))+
+  scale_y_continuous(breaks = c(-8.75, -8.35)) +
+  scale_fill_gradientn(breaks = c(2.2,3.4,4.6),colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Difference~(~degree~C)), title.position = "top", title.hjust = 0.5))
+
+
+cowplot::plot_grid(mar.g, aug.g,diff.g, nrow = 1, 
+                   labels = c("a)", "b)", "c)"), label_x = .23, label_y = .62, 
+                   label_size = 12, label_fontface = "plain")
+```
+
+### Chlorophyll-*a*
+
+```{r, eval = FALSE}
+
+# getInfo("mhchlamday")
+
+chl.mod = xtracto_3D(dtype = "mhchlamday", 
+                 xpos = c(39,41),
+                 ypos = c(-9,-7.5),
+                 tpos = c("2015-01-01", "2018-10-10"))
+
+lon = chl.mod$longitude
+lat = chl.mod$latitude
+time = chl.mod$time %>% as.Date()
+chl = chl.mod$data
+
+
+```
+
+
+```{r}
+
+n.lat = length(lat)
+n.lat = n.lat+1
+n.lon = length(lon)
+chl.tb = NULL
+
+for (i in 1:length(time)){
+  
+chl.df = chl[,,i] %>% as.data.frame()
+
+chl.long = data.frame(lon, chl.df) %>% 
+  gather(key = "key", value = "chl",2:n.lat ) %>% 
+  mutate(lat = rep(lat,each = n.lon), date = time[i]) %>% 
+  select(date, lon,lat, chl)
+
+chl.tb = chl.tb %>% bind_rows(chl.long)
+
+}
+
+```
+
+
+
+```{r}
+chl.mean = chl.tb %>% 
+  mutate(year = year(date), month = month(date)) %>% 
+  group_by(year, month) %>% 
+  summarise(chl = mean(chl, na.rm = TRUE))
+```
+
+Figure \@ref(fig:fig-chl) shows the monthly value of chlorophyll-a in the study area.The figure reveal the most productive water are during the months of February and May, though these is evident for the period between and , then the high productive months shifted to July-September and then in 2018 and went back to March and April (Figure \@ref(fig:fig-chl). The figure reveals that the productive months varies with change in environmental variables
+
+```{r fig-chl, fig.height=3.5, fig.width=7,, fig.align="center", fig.cap="Monthly chlorophyll-a concentration within the areas of Somanga and Songosongo between 2015 and 2018"}
+
+ggplot()+
+  geom_raster(data = chl.mean, aes(x = month, y = year, fill = log(chl)),interpolate = FALSE)+
+  scale_y_reverse()+
+  scale_x_continuous(limits =,breaks = 1:12, position = "top", 
+                     labels = month(seq(dmy(010118), dmy(151218), by = "month"), 
+                                    abbr = TRUE, label = TRUE))+
+  theme(panel.background = element_blank(),
+        axis.text = element_text(size = 11),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.key.width = unit(1.75, "cm"),
+        legend.key.height = unit(.4, "cm"),
+        legend.text = element_text(size = 11, colour = "grey30"),
+        legend.title = element_text(size = 12, colour = "grey30"))+
+  labs(x = "", y = "")+
+  scale_fill_gradientn(colours = oce.colorsJet(120), name = "Chl\n(mg/m3)", 
+                       guide = "colorbar",breaks = seq(-1.4,-.8, length.out = 5), 
+                       label = seq(.01,.51,length.out = 5) %>% round(digits = 2))+
+  guides(fill = guide_colorbar(title = expression(~Chlorophyll~(~mgm^{-3})), 
+                               title.position = "top", title.hjust = 0.5, reverse = FALSE))
+
+
+```
+
+The productivity in the Mafia area is mostly influenced by the freshwater input from Rufiji River that enhance the productivity in the area. The northeast receive rain that boost productivity (Figure \@ref(fig:chl-mafia)a). The cool weather and mixing during the northeast monsoon also promote productivity in the area (Figure \@ref(fig:chl-mafia)b). The difference between the two season is clearly marked within the estuary that has relatively higher chl value difference (Figure \@ref(fig:chl-mafia)c)
+
+```{r chl-mafia, fig.cap="Sea surface temperature around Mafia Island for a) March b) August and and c) is the difference in temperature between March and August. The griided data were processed from MODIS"}
+
+chl.tb = chl.tb %>% 
+  mutate(year = year(date) %>% as.integer(), month = month(date, label = TRUE, abbr = TRUE))
+
+
+mar.g = ggplot() +
+  geom_raster(data = chl.tb %>% filter(year == 2015 & month == "Mar") , 
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55)) +
+  scale_fill_gradientn(breaks = c(-2,0,2), label = c(0.01,0.25,0.5),
+                       colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Chlorophyll~(mgm^{-3})), title.position = "top", title.hjust = 0.5))
+
+aug.g = ggplot() +
+  geom_raster(data = chl.tb %>% filter(year == 2015 & month == "Aug") , 
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55)) +
+  scale_fill_gradientn(breaks = seq(-2,1, length.out = 3), label = c(0.01,0.1,0.25),
+                       colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Chlorophyll~(mgm^{-3})), title.position = "top", title.hjust = 0.5))
+
+
+## compute the difference of chl between March and August 2018
+chl.mar = chl.tb %>% filter(year == 2018 & month == "Mar") %>% rename(mar = chl)
+chl.aug = chl.tb %>% filter(year == 2018 & month == "Aug") %>% rename(aug = chl)
+
+chl.anomaly =  chl.mar%>%
+  bind_cols(chl.aug )%>% 
+  select(lon,lat, mar, aug) %>% mutate(anomaly = mar-aug)
+
+
+diff.g = ggplot() +
+  geom_raster(data = chl.anomaly , 
+              aes(x = lon, y = lat, fill = log(anomaly+.5)), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 40), ylim = c(-8.2, -7.5))+
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.9))+
+  scale_y_continuous(breaks = c(-8.15, -7.55)) +
+  scale_fill_gradientn(breaks = seq(-4,2.2, length.out = 3),label = seq(0.01,0.25,length.out = 3),
+                       colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Difference~(mgm^{-3})), title.position = "top", title.hjust = 0.5))
+
+
+cowplot::plot_grid(mar.g, aug.g,diff.g, nrow = 1, 
+                   labels = c("a)", "b)", "c)"), label_x = .23, label_y = .62, 
+                   label_size = 12, label_fontface = "plain")
+```
+
+The productivity in the Kilwa is mostly concentrated along the coastal shallow water for both northeast (Figure \@ref(fig:chl-kilwa)a) and southeast season (Figure \@ref(fig:chl-kilwa)b) and the major difference of productivity is within the longitude 39.4 and 39.5 northward (Figure \@ref(fig:chl-mafia)).
+
+```{r chl-kilwa, fig.cap="Sea surface temperature around Mafia Island for a) March b) August and and c) is the difference in temperature between March and August. The griided data were processed from MODIS"}
+
+chl.tb = chl.tb %>% 
+  mutate(year = year(date) %>% as.integer(), month = month(date, label = TRUE, abbr = TRUE))
+
+
+mar.g = ggplot() +
+  geom_raster(data = chl.tb %>% filter(year == 2015 & month == "Mar") , 
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 39.7), ylim = c(-8.8, -8.3))+ 
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+   scale_x_continuous(breaks = c(39.3,39.65))+
+  scale_y_continuous(breaks = c(-8.75, -8.35)) +
+  scale_fill_gradientn(breaks = c(-2,0,2), label = c(0.01,0.15,0.3),
+                       colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Chlorophyll~(mgm^{-3})), title.position = "top", title.hjust = 0.5))
+
+aug.g = ggplot() +
+  geom_raster(data = chl.tb %>% filter(year == 2015 & month == "Aug") , 
+              aes(x = lon, y = lat, fill = log(chl)), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 39.7), ylim = c(-8.8, -8.3))+ 
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+   scale_x_continuous(breaks = c(39.3,39.65))+
+  scale_y_continuous(breaks = c(-8.75, -8.35)) +
+  scale_fill_gradientn(breaks = seq(-2,1, length.out = 3), label = c(0.01,0.1,0.2),
+                       colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Chlorophyll~(mgm^{-3})), title.position = "top", title.hjust = 0.5))
+
+
+## compute the difference of chl between March and August 2018
+chl.mar = chl.tb %>% filter(year == 2018 & month == "Mar") %>% rename(mar = chl)
+chl.aug = chl.tb %>% filter(year == 2018 & month == "Aug") %>% rename(aug = chl)
+
+chl.anomaly =  chl.mar%>%
+  bind_cols(chl.aug )%>% 
+  select(lon,lat, mar, aug) %>% mutate(anomaly = mar-aug)
+
+
+diff.g = ggplot() +
+  geom_raster(data = chl.anomaly , 
+              aes(x = lon, y = lat, fill = log(anomaly+.5)), interpolate = FALSE)+
+  geom_sf(data = tz.ke, fill = "grey85", col = 1)+
+  coord_sf(xlim = c(39.25, 39.7), ylim = c(-8.8, -8.3))+ 
+  theme_bw()+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10, colour = "black"),
+        legend.direction = "horizontal",
+        legend.position = "top",
+        legend.background = element_blank(),
+        legend.key.width = unit(0.75, "cm"),
+        legend.key.height = unit(.25, "cm"))+
+  scale_x_continuous(breaks = c(39.3,39.65))+
+  scale_y_continuous(breaks = c(-8.75, -8.35)) +
+  scale_fill_gradientn(breaks = seq(-4,2.2, length.out = 3),label = seq(0.01,0.095,length.out = 3),
+                       colours = oceColorsJet(120), guide = "colourbar")+
+  guides(fill = guide_colorbar(title = expression(~Difference~(mgm^{-3})), title.position = "top", title.hjust = 0.5))
+
+
+cowplot::plot_grid(mar.g, aug.g,diff.g, nrow = 1, 
+                   labels = c("a)", "b)", "c)"), label_x = .23, label_y = .62, 
+                   label_size = 12, label_fontface = "plain")
+```
+
+### mafia ctd
+```{r}
+# read the gps file for Bwejuu and Jibondo ctd casts and reefs
+location.mafia = st_read("e:/Data Manipulation/mafia_kilwa_octopus_mapping/gps files/miamba mafia.gpx")
+
+# extract the positions of each location recorded
+positions = location.mafia %>% 
+  st_coordinates() %>%
+  as.data.frame()%>% 
+  rename(lon = X, lat = Y)
+
+# make a copy of the location.mafia file
+location.mafia.attributes = location.mafia
+
+# obtain the attribute information only by supressing the geometry information
+st_geometry(location.mafia.attributes) = NULL
+
+# process to obtain the attributes
+attributes = location.mafia.attributes %>% 
+  select(time,name, desc) %>% 
+  separate(name, c("cast", "number"), sep = 4)
+
+
+# bind the positions and attributes and drop non cast data
+ctd.location.mafia = positions %>% bind_cols(attributes) %>% 
+  filter(cast == "Cast") %>% 
+  select(time, lon,lat,cast, number)
+
+
+```
+
+## check the ctd cast and location
+The number of gps locations recorded are  38 while the ctd casted are 39. After checking, I found that one point of gps was not recorded, hence I added the time of gps from ctd cast but without the location informations
+
+```{r}
+# I am missing location for cast 76
+# also remove cast 79 because it was bad. The intrument was towed without removing the cover of the pressure sensor. not is cas 7
+
+missing.location = data.frame(time = dmy_hms("031218 08:19:15", tz = ""),
+                              lon = NA, lat = NA, cast = NA, number = NA)
+
+ctd.location.mafia = ctd.location.mafia %>% 
+  bind_rows(missing.location) %>% 
+  arrange(time) %>%
+  mutate(stationId = seq(1,39,1))
+```
+
+```{r}
+files = dir(path = "./ctd_mafia/cnv/", pattern = ".cnv", full.names = TRUE)
+```
+
+## check the quality of the cast
+We expected the profiles to measure from surface (depthe = 0), we can assess the quality of these measurement using the `plotScan()`. note that cast 8 have all the pressure with negative values. This is because for pressure sensor was not removed while the instruments was towed in the water. This is cast with bad data and should be removed.
+```{r eval=FALSE}
+for (i in 1:39){
+  readline(prompt = "ENTER")
+  
+  read.ctd(files[i]) %>% 
+    plotScan(main = paste("cast",i))
+  
+  }
+```
+
+
+```{r}
+# casts = c(1:4,6:7,9:39)
+
+ctd.mafia = list()
+
+for (i in 1:39){
+  ## read the cnv file and process them
+  ctd.mafia[[i]] = read.ctd(files[i]) %>% 
+    ctdTrim(method = "downcast") %>% 
+    subset(pressure >= .2) %>% 
+    ctdDecimate(p = .25)
+  
+  # once each cast is processed, assign the attributes
+  ctd.mafia[[i]][["longitude"]] = ctd.location.mafia$lon[i]
+  ctd.mafia[[i]][["latitude"]] = ctd.location.mafia$lat[i]
+  ctd.mafia[[i]][["institute"]] = "Tanzania Fisheries Research Institute"
+  ctd.mafia[[i]][["scientist"]] = "Patroba Matiku, Muhaji Chande & Masumbuko Semba"
+  # inserting the station is important because without it you will never subset hydrographic section to your       locations later
+  ctd.mafia[[i]]@metadata$station = i 
+}
+
+```
+
+Because of the inaccuracy of cast 5 and 8, we ought to remove them from the ctd list. Begin with cast 8 and the cast 5 i.e remove in descending order so that the numbering of low cast is not afftected.
+```{r}
+ctd.mafia[[8]] = NULL
+ctd.mafia[[5]] = NULL
+```
+
+```{r}
+ section.mafia = ctd.mafia %>% as.section()
+```
+
+```{r} 
+section.mafia %>% plot(which = "map")
+
+section.mafia %>% subset(longitude <39.58)
+```
+
+```{r}
+# Western transect of bwejuu island:latitudinal gradient
+section.mafia %>% 
+  subset(stationId < 7) %>% 
+  plot(which = c("map","oxygen", "temperature","salinity"), 
+       ztype = "image", xtype = "latitude", ylim = c(0.5,6))
+```
+
+```{r}
+#south transect of bwejuu island: longitudinal gradient
+section.mafia %>% 
+    subset(stationId >= 7 & stationId < 12) %>% 
+    plot(which = c("map","oxygen", "temperature","salinity"), 
+         ztype = "image", xtype = "longitude", ylim = c(0.5,12))
+```
+
+```{r}
+# eastern transect of bwejuu island:latitudinal gradient
+section.mafia %>% 
+    subset(stationId >= 12 & stationId < 16) %>% 
+    plot(which = c("map","oxygen", "temperature","salinity"), 
+         ztype = "image", xtype = "latitude", ylim = c(0.5,12))
+```
+
+```{r}
+# northern transect of bwejuu island:longitudinal gradient
+section.mafia %>% 
+    subset(stationId >= 15 & stationId <= 17) %>% 
+    plot(which = c("map","oxygen", "temperature","salinity"), 
+         ztype = "image", xtype = "longitude", ylim = c(0.5,2.5))
+```
+
+```{r}
+# northern transect: chole to Mange:longitudinal gradient
+section.mafia %>% 
+    subset(stationId >= 20 & stationId <= 29) %>% 
+    plot(which = c("map","oxygen", "temperature","salinity"), 
+         ztype = "image", xtype = "longitude", ylim = c(0.5,5))
+```
+
+
+```{r}
+# northern transect: Mange to Kitutia:latitudinal gradient
+section.mafia %>% 
+    subset(stationId >= 29 & stationId <= 34) %>% 
+    plot(which = c("map","oxygen", "temperature","salinity"), 
+         ztype = "image", xtype = "latitude", ylim = c(0.5,8))
+```
+
+
+```{r}
+# northern transect: Kitutia to mto wa fungu:longitudinal gradient
+section.mafia %>% 
+    subset(stationId >= 20 & stationId <= 29) %>% 
+    plot(which = c("map","oxygen", "temperature","salinity"), 
+         ztype = "image", xtype = "longitude", ylim = c(0.5,5))
+```
+
+```{r}
+section.mafia %>% subset(stationId %in% c(12,29,30,31,32,33,34)) %>% plot(xtype = "longitude", ztype = "image", ylim = c(.50,5), which = c("temperature", "oxygen", "fluorescence", "map"))
+```
+
+
+```{r}
+
+ctd.mafia.tb = NULL
+
+for (j in 1:37){
+
+ctd.mafia.df = ctd.mafia[[j]]@data %>% as.data.frame()  %>%
+  mutate(lat = ctd.mafia[[j]]@metadata$latitude,
+         lon = ctd.mafia[[j]]@metadata$longitude,
+         time = ctd.mafia[[j]]@metadata$startTime,
+         cast = ctd.mafia[[j]]@metadata$station)%>% 
+  as.tibble() %>%
+  select(cast, time, lon,lat,depth, pressure, temperature, 
+         conductivity, salinity, oxygen, fluorescence)
+
+  ctd.mafia.tb = ctd.mafia.tb %>% bind_rows(ctd.mafia.df)
+    
+}
+
+rm(ctd.mafia.df, i, j)
+
+
+```
+
+
+```{r}
+ctd.mafia.tb = ctd.mafia.tb %>% 
+  mutate(site = day(time), 
+         site = replace(site,site == 3, "Bwejuu"),
+         site = replace(site,site == 4, "Jibondo"))
+```
+
+```{r}
+ggplot(data = ctd.mafia.tb, aes(x = site, y = temperature))+geom_boxplot()
+```
+
+
+```{r}
+ggplot(data = ctd.mafia.tb,
+       aes(y = pressure, x = fluorescence, colour = site)) + 
+  geom_path()+
+  scale_y_reverse()+
+  scale_x_continuous(position = "top")+
+  scale_color_discrete()
+```
+
+```{r}
+surface = ctd.mafia.tb %>% filter(pressure == 0.5)
+
+oxygen.surface.interp = interpBarnes(x = surface$lon, y = surface$lat, z = surface$oxygen)
+
+```
+
+```{r}
+lon = oxygen.surface.interp$xg
+lat = oxygen.surface.interp$yg
+oxygen = oxygen.surface.interp$zg
+
+imagep(lon,lat, oxygen, filledContour = TRUE, col = oceColors9A(120))
+contour(lon,lat, oxygen,  col = 1, add = TRUE)
+
+
+nlon = length(lon)
+nlat = length(lat)+1
+
+
+```
+
+```{r}
+
+oxygen.surface.interp.df =data.frame(lon, as.data.frame(oxygen)) %>% 
+  gather(key = "key", value = "oxygen", 2:42) %>%
+  mutate(lat = rep(lat, each = nlon), depth = 0.5) %>% 
+  select(lon,lat, depth, oxygen)
+
+ggplot()+
+  geom_raster(data = oxygen.surface.interp.df, 
+              aes(x = lon, y = lat, fill = oxygen), interpolate = TRUE)+
+  geom_contour(data = oxygen.surface.interp.df,
+               aes(x = lon, y = lat, z = oxygen), col = 1)+
+  scale_fill_gradientn(colours = oceColors9A(120))
+```
+
+## Iterate the process
+### oxygen
+```{r}
+
+depth = c(0.5,5,10) # octopus fishery mostly conducted on reefs that are 10 meters depth
+oxygen.interp.tb = NULL
+
+for (n in depth){
+
+surface = ctd.mafia.tb %>% filter(pressure == n)
+
+x = surface$lon;y = surface$lat; z = surface$oxygen
+
+oxygen.interp = interpBarnes(x = x, y = y, z = z)
+
+lon = oxygen.interp$xg
+lat = oxygen.interp$yg
+oxygen = oxygen.interp$zg
+
+nlon = length(lon)
+nlat = length(lat)+1
+
+oxygen.interp.df = data.frame(lon, as.data.frame(oxygen)) %>% 
+  gather(key = "key", value = "oxygen", 2:nlat) %>%
+  mutate(lat = rep(lat, each = nlon), depth = n) %>% 
+  select(lon,lat, depth, oxygen)
+
+oxygen.interp.tb = oxygen.interp.tb %>% bind_rows(oxygen.interp.df)
+}
+
+
+```
+
+```{r}
+ggplot()+
+  geom_raster(data = oxygen.interp.tb, 
+              aes(x = lon, y = lat, fill = oxygen), interpolate = TRUE)+
+  geom_contour(data = oxygen.interp.tb,
+               aes(x = lon, y = lat, z = oxygen), col = 1)+
+  theme(legend.position = "top", legend.direction = "horizontal", 
+        legend.key.width = unit(3, "cm"),
+        legend.key.height = unit(.4, "cm"),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 11),
+        axis.text = element_text(size = 11),
+        strip.background = element_rect(colour = NA, fill = NA),
+        strip.text = element_text(size = 11))+
+  scale_fill_gradientn(colours = oceColors9A(120), breaks = seq(1.8,3.5,.2),
+                       guide = "colorbar") + 
+  guides(fill = guide_colorbar(title = expression (~Dissolved~oxygen~(mgm^{-3})), 
+                               title.position = "top", title.hjust = 0.5,title.vjust = 0.25, 
+                               label.vjust = 1, raster = TRUE, frame.colour = NULL,
+                               ticks.colour = 1)) +
+  facet_wrap(~depth)+
+  labs(x = "", y = "")
+
+
+```
+
+### temperature
+```{r}
+
+depth = c(0.5,5,10) # octopus fishery mostly conducted on reefs that are 10 meters depth
+temperature.interp.tb = NULL
+
+for (n in depth){
+
+surface = ctd.mafia.tb %>% filter(pressure == n)
+
+x = surface$lon;y = surface$lat; z = surface$temperature
+
+temperature.interp = interpBarnes(x = x, y = y, z = z)
+
+lon = temperature.interp$xg
+lat = temperature.interp$yg
+temperature = temperature.interp$zg
+
+nlon = length(lon)
+nlat = length(lat)+1
+
+temperature.interp.df = data.frame(lon, as.data.frame(temperature)) %>% 
+  gather(key = "key", value = "temperature", 2:nlat) %>%
+  mutate(lat = rep(lat, each = nlon), depth = n) %>% 
+  select(lon,lat, depth, temperature)
+
+temperature.interp.tb = temperature.interp.tb %>% bind_rows(temperature.interp.df)
+}
+
+
+```
+
+```{r}
+ggplot()+
+  geom_raster(data = temperature.interp.tb, 
+              aes(x = lon, y = lat, fill = temperature), interpolate = TRUE)+
+  geom_contour(data = temperature.interp.tb,
+               aes(x = lon, y = lat, z = temperature), col = 1)+
+  theme(legend.position = "top", legend.direction = "horizontal", 
+        legend.key.width = unit(3, "cm"),
+        legend.key.height = unit(.4, "cm"),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 11),
+        axis.text = element_text(size = 11),
+        strip.background = element_rect(colour = NA, fill = NA),
+        strip.text = element_text(size = 11))+
+  scale_fill_gradientn(colours = oceColors9A(120), breaks = seq(26.5,28.7,.3),
+                       guide = "colorbar") + 
+  guides(fill = guide_colorbar(title = expression (~Temperature~(~degree~C)), 
+                               title.position = "top", title.hjust = 0.5,title.vjust = 0.25, 
+                               label.vjust = 1, raster = TRUE, frame.colour = NULL,
+                               ticks.colour = 1)) +
+  facet_wrap(~depth)+
+  labs(x = "", y = "")
+```
+
+### salinity
+```{r}
+
+depth = c(0.5,5,10) # octopus fishery mostly conducted on reefs that are 10 meters depth
+salinity.interp.tb = NULL
+
+for (n in depth){
+
+surface = ctd.mafia.tb %>% filter(pressure == n)
+
+x = surface$lon;y = surface$lat; z = surface$salinity
+
+salinity.interp = interpBarnes(x = x, y = y, z = z)
+
+lon = salinity.interp$xg
+lat = salinity.interp$yg
+salinity = salinity.interp$zg
+
+nlon = length(lon)
+nlat = length(lat)+1
+
+salinity.interp.df = data.frame(lon, as.data.frame(salinity)) %>% 
+  gather(key = "key", value = "salinity", 2:nlat) %>%
+  mutate(lat = rep(lat, each = nlon), depth = n) %>% 
+  select(lon,lat, depth, salinity)
+
+salinity.interp.tb = salinity.interp.tb %>% bind_rows(salinity.interp.df)
+}
+
+
+```
+
+```{r}
+ggplot()+
+  geom_raster(data = salinity.interp.tb, 
+              aes(x = lon, y = lat, fill = salinity), interpolate = TRUE)+
+  geom_contour(data = salinity.interp.tb,
+               aes(x = lon, y = lat, z = salinity), col = 1)+
+  theme(legend.position = "top", legend.direction = "horizontal", 
+        legend.key.width = unit(3, "cm"),
+        legend.key.height = unit(.4, "cm"),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 11),
+        axis.text = element_text(size = 11),
+        strip.background = element_rect(colour = NA, fill = NA),
+        strip.text = element_text(size = 11))+
+  scale_fill_gradientn(colours = oceColors9A(120), breaks = seq(33.9,35.5,.3),
+                       guide = "colorbar") + 
+  guides(fill = guide_colorbar(title = "Salinity", 
+                               title.position = "top", title.hjust = 0.5,title.vjust = 0.25, 
+                               label.vjust = 1, raster = TRUE, frame.colour = NULL,
+                               ticks.colour = 1)) +
+  facet_wrap(~depth)+
+  labs(x = "", y = "")
+```
+
+### fluorescence
+```{r}
+
+depth = c(0.5,5,10) # octopus fishery mostly conducted on reefs that are 10 meters depth
+fluorescence.interp.tb = NULL
+
+for (n in depth){
+
+surface = ctd.mafia.tb %>% filter(pressure == n)
+
+x = surface$lon;y = surface$lat; z = surface$fluorescence
+
+fluorescence.interp = interpBarnes(x = x, y = y, z = z)
+
+lon = fluorescence.interp$xg
+lat = fluorescence.interp$yg
+fluorescence = fluorescence.interp$zg
+
+nlon = length(lon)
+nlat = length(lat)+1
+
+fluorescence.interp.df = data.frame(lon, as.data.frame(fluorescence)) %>% 
+  gather(key = "key", value = "fluorescence", 2:nlat) %>%
+  mutate(lat = rep(lat, each = nlon), depth = n) %>% 
+  select(lon,lat, depth, fluorescence)
+
+fluorescence.interp.tb = fluorescence.interp.tb %>% bind_rows(fluorescence.interp.df)
+}
+
+
+```
+
+```{r}
+ggplot()+
+  # geom_sf(data = location.mafia)+
+  geom_raster(data = fluorescence.interp.tb, 
+              aes(x = lon, y = lat, fill = fluorescence), interpolate = TRUE)+
+  geom_contour(data = fluorescence.interp.tb,
+               aes(x = lon, y = lat, z = fluorescence), col = 1)+
+  theme(legend.position = "top", legend.direction = "horizontal", 
+        legend.key.width = unit(3, "cm"),
+        legend.key.height = unit(.4, "cm"),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 11),
+        axis.text = element_text(size = 11),
+        strip.background = element_rect(colour = NA, fill = NA),
+        strip.text = element_text(size = 11))+
+  scale_fill_gradientn(colours = oceColors9A(120), 
+                       breaks = seq(0,0.15,length.out = 6) %>% round(digits = 2),
+                       guide = "colorbar") + 
+  guides(fill = guide_colorbar(title = expression (~Fluorescence~(mgm^{-3})), 
+                               title.position = "top", title.hjust = 0.5,title.vjust = 0.25, 
+                               label.vjust = 1, raster = TRUE, frame.colour = NULL,
+                               ticks.colour = 1)) +
+  facet_wrap(~depth)+
+  labs(x = "", y = "")
+```
+
+
+discussion notes
+coral reefs
+1. *reef flats--- foot fishery*
+2. *inner reefs---diving octopus fishery*
+3. *vijamba---diving octopus fishery*
+
+
+### landscaping
+heterogeity and homogeneity-habitat fragementations
+
+
+## Miamba
+
+<!-- - make corrections of Kurunge reefs-separate it with the inner reef -->
+<!-- - move name of mto wa fungu to the unmentioned reef -->
+<!-- - merge the previous named mto wa fungu with mchange nyuma -->
+<!-- - separate mchanga nyuma at the interssection of juani and jibondo islands -->
+
+## explaining what the data means
+Data interpretation is a broad subject that can be applied in different ways. We will focus on basic interpretation of water quality and benthic macroinvertebrate data that were collected in the field. Sampling water quality or benthic macroinvertebrate parameters, such as dissolved oxygen or percent clingers, yields data in the form of qualitative or quantitative measurements. For example, a dissolved oxygen measurement might read 5.2 milligrams per liter (mg/l). Interpreting that measurement includes giving it meaning is that particular measurement at a healthy dissolved oxygen level? Does it mean that the entire stream being measured is healthy or just that portion of that stream where the dissolved oxygen was measured? How does that measurement fit into the context of the entire stream you're monitoring? Does it seem unusual to get a reading of 5.2 mg/l and if so, what might be causing such an irregular number?
+
+```{r}
+cols = c("red", "blue", "green", "maroon")
+
+ggplot()+
+  geom_sf(data = octopus.ground.sf %>% filter(Area == "Jibondo"), 
+          aes(fill = type), col = "black", size = 0.25)+ 
+  geom_point(data = ctd.mafia.tb %>% filter(pressure == .5 & site == "Jibondo"), 
+             aes(x = lon, y = lat, col = oxygen), size = 5)+ 
+  scale_colour_gradientn(colors = oceColorsJet(120),
+                         breaks = seq(1.8, 2.4, length.out = 4))+
+  scale_fill_manual(values = cols)
+```
+
+```{r}
+catch = readxl::read_excel("Octopus.xlsx", sheet = 2)
+
+# field.data = field %>%
+#   mutate(date = dmy(siku) ) %>% 
+#   filter(Kijiji %in% c("Somanga", "Songosongo")) %>% 
+#   select(date, month = Month, village = Kijiji, diko = Diko, Locality,
+#          vessels = 7,engine.power = 8, 
+#          fisher.number = 9, fishing.ground = 11, fish.type = 13,species = 14,
+#          Family = 15,weight = 16, number.octopus = 17,cpue = 18) %>% 
+#   mutate(catch.rate = weight/fisher.number, month = month(date))%>%
+#   filter(fish.type == "Pweza")
+
+catch = catch %>% 
+  mutate(Locality = replace(Locality,Locality == "Mbakare Ya Mwamba", "Mwamba Kaskazini"),
+         Locality = replace(Locality,Locality == "Mwamba Wa Pwani", "Mwamba Kaskazini"),
+         Locality = replace(Locality,Locality == "Banda Mrima", "Mlima"),
+         Locality = replace(Locality,Locality == "Nyamalile", "Mnyamalile"),
+         Locality = replace(Locality,Locality == "Makolokoroni", "Mchanga Nyuma"),
+         Locality = replace(Locality,Locality == "Malokoni", "Mchanga Nyuma"),
+         Locality = replace(Locality,Locality == "Kiziji", "Mchanga Nyuma"),
+         Locality = replace(Locality,Locality == "Banyani", "Baniani"))
+```
+
+```{r}
+catch %>% filter(Specie == "Pweza") %>% group_by(Locality, Kijiji) %>% summarise(lon = mean(Longitude), lat = median(Latitude),fishers = median(`Idadi Ya Wavuvi Chomboni`), cpue = mean(Cpue)) %>% arrange(Kijiji)
+
+
+```
+
+```{r}
+octopus.ground.sf%>% 
+  filter(type %in% c("outer coral", "inner coral")) %>% arrange(Area, Name) %>%
+  st_set_geometry(NULL) %>% 
+  mutate(mwamba = as.character(Name),
+         mwamba = replace(mwamba, mwamba == "Vijamba vya Dima", "Vijambani"),
+         mwamba = replace(mwamba, mwamba == "Vijamba vya Mnyamalile", "Vijambani"),
+         mwamba = replace(mwamba, mwamba == "Mto wa Fungu", "Mto Wa Fungu"),
+         mwamba = replace(mwamba, mwamba == "Mchanga nyumba", "Mchanga Nyuma"),
+         mwamba = replace(mwamba, mwamba == "Mto wa Fungu", "Mto Wa Fungu"),
+         mwamba = replace(mwamba, mwamba == "Chamba cha Chocha", "Chamba Cha Chocha")) %>%
+  mutate(type = as.character(type),
+         type = replace(type, type == "outer coral", "reef flat"),
+         type = replace(type, type == "inner coral", "submerged reef")) %>%
+  mutate(Area = replace(Area, Area == "Maji haba", NA))
+
+
+octopus.ground.sf%>% st_set_geometry(NULL) %>% distinct(type)
+```
+
+```{r}
+
+leo = mo_bwejuu %>% mutate(type = rep(c("a", "b", "c"), c(6,3,6)))
+
+fig1 = ggplot(data = leo,aes(x = x, y = y, col = type))+
+  geom_line(data = leo %>% filter(type == "b"))+ 
+  geom_point(size = 4) + theme_bw() + 
+  theme(legend.position = "none", axis.text = element_text(size = 11, colour = 1),
+        axis.title = element_text(size = 12, colour = 1)) +
+  scale_x_continuous(breaks = seq(0,3, length.out = 6)) + 
+  scale_y_continuous(limits = c(0,12)) + 
+  scale_color_manual(values = c("red", "black", "blue")) + 
+  labs(x = "Relative Age", y = "ln(N/dt)")
+
+fig2 = ggplot(data = leo,aes(x = x, y = y, col = type))+
+  geom_line(data = leo %>% filter(type == "b"))+ 
+  geom_point(size = 4) + theme_bw() + 
+  theme(legend.position = "none", axis.text = element_text(size = 11, colour = 1),
+        axis.title = element_text(size = 12, colour = 1)) +
+  scale_x_continuous(breaks = seq(0,3, length.out = 6)) + 
+  scale_y_continuous(limits = c(0,12)) + 
+  scale_color_manual(values = c("red", "black", "blue")) + 
+  labs(x = "Relative Age", y = "ln(N/dt)")
+
+fig3 = ggplot(data = leo,aes(x = x, y = y, col = type))+
+  geom_line(data = leo %>% filter(type == "b"))+ 
+  geom_point(size = 4) + theme_bw() + 
+  theme(legend.position = "none", axis.text = element_text(size = 11, colour = 1),
+        axis.title = element_text(size = 12, colour = 1)) +
+  scale_x_continuous(breaks = seq(0,3, length.out = 6)) + 
+  scale_y_continuous(limits = c(0,12)) + 
+  scale_color_manual(values = c("red", "black", "blue")) + 
+  labs(x = "Relative Age", y = "ln(N/dt)")
+
+cowplot::plot_grid(fig1, fig2, fig3, nrow = 1)
+```
+

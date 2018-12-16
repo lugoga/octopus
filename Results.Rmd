@@ -15,7 +15,7 @@ always_allow_html: yes
 
 # Results
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "", options(digits = 3))
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "", options(digits = 4))
 ```
 
 
@@ -39,17 +39,92 @@ require(ggsci)
 load("result.RData")
 ```
 
+
+
+```{r}
+# read etopo 1 ascii file
+etopo = sp::read.asciigrid("E:/GIS/ROADMAP/Etopo 1/Tanzania_etopo1/tanz1_-3432.asc")
+# convert the etopo file into tibble
+etopo.df = as.data.frame(etopo)%>%as.tibble()
+
+# tidy the data
+etopo.df = etopo.df%>%
+  rename(lon = s1,lat = s2, bathmetry = E..GIS.ROADMAP.Etopo.1.Tanzania_etopo1.tanz1_.3432.asc)%>%
+  select(lon,lat, bathmetry)
+
+# select the bathmetry value only within the pemba channel area of interest
+bathmetry = etopo.df%>%filter(lon>=39 & lon <=42 & lat >=-11 & lat <= -7 & bathmetry <=0)
+
+```
+
+
 ```{r eval=TRUE}
 
-africa = read_sf("E:/GIS/Tanzania spatial data Bank/EAF14 Tanzania spatial datasets/africa/Spatial/AdmInfr/afcntry.shp")
+africa = read_sf("E:/Data Manipulation/nyamisi/regional/africa.shp")
 
 tz.ke = africa%>%select(-c(FIPS_CNTRY, REGIONA, EMPTY, EMPTY2))
+
+mimp = st_read("shapefiles/mimp.shp")
+mangroves = st_read("shapefiles/coastal_land_cover.shp")
+coral = st_read("shapefiles/coral_reefs.shp")
+```
+
+```{r}
+ggplot() +
+  geom_raster(data = bathmetry, aes(x = lon, y = lat, fill = bathmetry))+
+  geom_contour(data = bathmetry %>% filter(bathmetry > -100 & bathmetry <5), 
+              aes(x = lon, y = lat, z = bathmetry), 
+              breaks = c(-10,-20,-30,-40,-50), col = "grey80")+
+  geom_contour(data = bathmetry %>% filter(bathmetry > -2000 & bathmetry <5), 
+              aes(x = lon, y = lat, z = bathmetry), 
+              breaks = seq(-2000,-100, 400), col = "black")+
+  geom_sf(data = tz.ke, col = 1, fill = "grey85")  +
+  # geom_sf(data = mangroves %>% filter(CLASS == "Mangrove")) +
+  geom_sf(data = coral)+
+  coord_sf(xlim = c(39.2,40.2), ylim = c(-8.6,-7.5)) +
+  theme_bw()+
+  theme(legend.direction = "vertical", legend.position = c(.85,.22),
+        legend.background = element_rect(colour = "black")) +
+  scale_fill_gradientn(name = "Depth(m)", limits = c(-2000,0),
+                       colours = oceColorsGebco(120), breaks =seq(-2000,0,500),
+                       label = seq(0,2000,500)%>% rev()) + 
+  scale_x_continuous(breaks = seq(39.25, 40.15, length.out = 4)) +
+  scale_y_continuous(breaks = seq(-8.6, -7.5, length.out = 4)) +
+  labs(x = "", y = "")+
+  annotate(geom = "text", x = 39.9, y = -7.87, label = "Mafia\nIsland")+
+  annotate(geom = "text", x = 39.7, y = -8.45, label = "Songosongo\nIsland")+
+  annotate(geom = "text", x = 39.26, y = -8.23, label = "Somanga")
+
+```
+
+```{r}
+eastern.africa = spData::world %>% filter(name_long %in% c("Tanzania", "Kenya", "Mozambique", "Madagascar"))
+
+ggplot() +
+  geom_sf(data = eastern.africa)+
+  coord_sf(ylim = c(-15, 0), xlim = c(35, 49))+
+  theme_bw()+
+  theme(panel.grid = element_line(colour = NA),
+        axis.text = element_blank(),
+        axis.ticks = element_blank())
 ```
 
 
 
 ```{r}
 octopus.ground.sf= st_read("e:/Data Manipulation/mafia_kilwa_octopus_mapping/shapefiles/miamba_topology_clean_updated_added_mafia.shp")
+
+octopus.ground.sf = octopus.ground.sf%>% mutate(mwamba = as.character(Name),
+         mwamba = replace(mwamba, mwamba == "Vijamba vya Dima", "Vijambani"),
+         mwamba = replace(mwamba, mwamba == "Vijamba vya Mnyamalile", "Vijambani"),
+         mwamba = replace(mwamba, mwamba == "Mto wa Fungu", "Mto Wa Fungu"),
+         mwamba = replace(mwamba, mwamba == "Mchanga nyumba", "Mchanga Nyuma"),
+         mwamba = replace(mwamba, mwamba == "Mto wa Fungu", "Mto Wa Fungu"),
+         mwamba = replace(mwamba, mwamba == "Chamba cha Chocha", "Chamba Cha Chocha")) %>%
+  mutate(type = as.character(type),
+         type = replace(type, type == "outer coral", "reef flat"),
+         type = replace(type, type == "inner coral", "submerged reef")) %>%
+  mutate(Area = replace(Area, Area == "Maji haba", NA))
 
 octopus.ground.names = octopus.ground.sf 
 
@@ -66,6 +141,104 @@ octopus.ground.names.df = octopus.ground.coordinates %>%
 
 ```
 
+
+```{r miamba-jibondo, fig.cap="Reefs commonly used for octopus fishery around Jibondo"}
+
+ggplot() + 
+  geom_sf(data = octopus.ground.sf %>% filter(type != "Island"), aes(fill = type))+
+  geom_sf(data = tz.ke, fill = "#DFC27D")+
+  coord_sf(xlim = c(39.6, 39.8), ylim = c(-8.15, -7.95))+
+  scale_fill_manual(values = c("#FFFFCC","#B2DF8A","#66C2A5"),
+                    label = c("Shallow Areas", "Reef flat", "Subermeged Reef"), 
+                    name = "Habitat type")+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+        legend.position = c(.78,.16), 
+        legend.background = element_rect(colour = 1), 
+        legend.title = element_text(face = "bold"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% filter(Area == "Jibondo"), 
+                           aes(x = lon, y = lat, label = mwamba)) +
+  annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland")+
+  labs(x = "", y = "")
+
+
+```
+
+
+
+```{r miamba-bwejuu, fig.cap="Reefs commonly used for octopus fishery around Bwejuu"}
+
+ggplot() + 
+  geom_sf(data = octopus.ground.sf %>% filter(type != "Island" & Area == "Bwejuu"), 
+          aes(fill = type))+
+  geom_sf(data = tz.ke, fill = "#DFC27D")+
+  coord_sf(xlim = c(39.45, 39.58), ylim = c(-8.1, -7.92))+
+  scale_fill_manual(values = c("#B2DF8A","#66C2A5"),
+                    label = c("Reef flat", "Subermeged Reef"), 
+                    name = "Habitat type")+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+        legend.position = c(.29,.12), 
+        legend.background = element_rect(colour = 1), 
+        legend.title = element_text(face = "bold"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% filter(Area == "Bwejuu" & mwamba != "Sefu" & mwamba != "Ngusi" ), 
+                           aes(x = lon, y = lat, label = mwamba)) +
+  annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland")+
+  labs(x = "", y = "")+
+  scale_x_continuous(breaks = seq(39.45, 39.58,length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.1, -7.92, length.out = 4))
+
+```
+
+```{r miamba-somanga, fig.cap="Reefs commonly used for octopus fishery around Somanga"}
+
+ggplot() +
+  geom_sf(data = octopus.ground.sf %>% filter(type %in% c("reef flat", "submerged reef")), 
+          aes(fill = type))+
+  geom_sf(data = tz.ke, fill = "#DFC27D") +
+  coord_sf(xlim = c(39.325, 39.60), ylim = c(-8.46, -8.34))+
+  scale_fill_manual(values = c("#B2DF8A","#66C2A5"),
+                    label = c("Reef flat", "Subermeged Reef"), 
+                    name = "Habitat type")+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+        legend.position = c(.87,.17), 
+        legend.background = element_rect(colour = 1), 
+        legend.title = element_text(face = "bold"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% filter(Area == "Somanga"), 
+                           aes(x = lon, y = lat, label = mwamba)) +
+  # annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland")+
+  labs(x = "", y = "") +
+  scale_x_continuous(breaks = seq(39.35, 39.60,length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.46, -8.34, length.out = 4))
+```
+
+
+```{r miamba-songosongo, fig.cap="Reefs commonly used for octopus fishery around Songosongo"}
+
+ggplot() +
+  geom_sf(data = octopus.ground.sf %>% filter(type %in% c("reef flat", "submerged reef")), 
+          aes(fill = type))+
+  geom_sf(data = tz.ke, fill = "#DFC27D") +
+  coord_sf(xlim = c(39.34, 39.61), ylim = c(-8.66, -8.45))+
+  scale_fill_manual(values = c("#B2DF8A","#66C2A5"),
+                    label = c("Reef flat", "Subermeged Reef"), 
+                    name = "Habitat type")+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+        legend.position = c(.18,.13), 
+        legend.background = element_rect(colour = 1), 
+        legend.title = element_text(face = "bold"))+
+  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% 
+                             filter(Area == "Songosongo"), 
+                           aes(x = lon, y = lat, label = mwamba)) +
+  # annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland")+
+  labs(x = "", y = "") +
+  scale_x_continuous(breaks = seq(39.35, 39.60,length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.65, -8.45, length.out = 4))
+```
+
+
 ##Jibondo
 
 Figure \@ref(fig:fig-jibondo) is map showing the distribution of outer and inner coral reefs areas that octopus fisher use as fishing ground at Jibondo Island in Mafia Island.
@@ -80,9 +253,9 @@ ggplot() +
   theme(panel.background = element_rect(fill = "grey95"),
         legend.position = c(.85,.2),
         legend.background = element_blank(), legend.key.size = unit(.75, "lines"))+
-  scale_fill_simpsons(name = "Octopus Areas", limits = c("Island", "inner coral", "coastal-shallow", "outer coral"))+
+  scale_fill_simpsons(name = "Octopus Areas", limits = c("Island", "submerged reef", "coastal-shallow", "reef flat"))+
   ggrepel::geom_text_repel(data = octopus.ground.names.df %>% 
-                             filter(Area == "Jibondo"& type %in% c("outer coral", "Island", "outer coral", "coastal-shallow")),
+                             filter(Area == "Jibondo"& type %in% c("reef flat", "Island", "subemerged reef", "coastal-shallow")),
                             aes(x = lon, y = lat, label = Name), nudge_y =  0.03,
                            nudge_x = -0.025,segment.colour = "red", segment.size = .25)+
   labs(x = NULL, y = NULL)
@@ -95,10 +268,20 @@ ggplot() +
 ```{r}
 field = readxl::read_excel("Octopus.xlsx", sheet = 2)
 
+field = field %>% 
+  mutate(Locality = replace(Locality,Locality == "Mbakare Ya Mwamba", "Mwamba Kaskazini"),
+         Locality = replace(Locality,Locality == "Mwamba Wa Pwani", "Mwamba Kaskazini"),
+         Locality = replace(Locality,Locality == "Banda Mrima", "Mlima"),
+         Locality = replace(Locality,Locality == "Nyamalile", "Mnyamalile"),
+         Locality = replace(Locality,Locality == "Makolokoroni", "Mchanga Nyuma"),
+         Locality = replace(Locality,Locality == "Malokoni", "Mchanga Nyuma"),
+         Locality = replace(Locality,Locality == "Kiziji", "Mchanga Nyuma"),
+         Locality = replace(Locality,Locality == "Banyani", "Baniani"))
+
 field.data = field %>%
   mutate(date = dmy(siku) ) %>% 
   filter(Kijiji %in% c("Somanga", "Songosongo")) %>% 
-  select(date, month = Month, village = Kijiji, diko = Diko, 
+  select(date, month = Month, village = Kijiji, diko = Diko, Locality,
          vessels = 7,engine.power = 8, 
          fisher.number = 9, fishing.ground = 11, fish.type = 13,species = 14,
          Family = 15,weight = 16, number.octopus = 17,cpue = 18) %>% 
@@ -113,7 +296,7 @@ field.data = field %>%
 jibondo.bwejuu = field %>%
   mutate(date = dmy(siku) ) %>% 
   filter(Kijiji %in% c("Jibondo", "Bwejuu")) %>% 
-  select(date, month = Month, village = Kijiji, diko = Diko, 
+  select(date, month = Month, village = Kijiji, diko = Diko, locality = Locality,
          vessels = 7,engine.power = 8, 
          fisher.number = 9, fishing.ground = 11, fish.type = 13,species = 14,
          Family = 15,weight = 16, number.octopus = 17,cpue = 18) %>% 
@@ -125,20 +308,23 @@ jibondo.bwejuu = field %>%
 
 
 ```{r tab11}
-jibondo.freq = jibondo.bwejuu %>% filter(village == "Jibondo") %>% group_by(fishing.ground) %>% summarise(Fisher = n()) %>% ungroup() %>% mutate(percentage.fisher = Fisher/sum(Fisher)*100) %>% arrange(desc(percentage.fisher))
+jibondo.freq = jibondo.bwejuu %>% filter(village == "Jibondo") %>% group_by(locality) %>% summarise(Fisher = n()) %>% ungroup() %>% mutate(percentage.fisher = Fisher/sum(Fisher)*100) %>% arrange(desc(percentage.fisher))
 
 jibondo.freq %>%
   kable( "html", caption = "Coral reefs that are mostly used for octopus fishery as fishing  ground in Jibondo Island ", col.names = c("Fishing ground", "Number", "Percentage"), align = "c") %>%
   column_spec(column = 1, width = "5cm") %>%
-  column_spec(column = 2:3, width = "2cm") %>%
+  column_spec(column = 2:3, width = "4cm") %>%
   add_header_above(c("", "Octopus fishery" = 2))
+
+
 ```
 
 
 Athough the Chole Bay Genera Use Zone appear on the table \@ref(tab:tab11), it was dropped on the figure \@ref(fig:fig-jibondo) because it is out of the area of focus
 
 ```{r fig-jibondo, fig.cap="Percentage of octopus fishers at different coral reefs grounds at Jibondo Island", fig.width=5, fig.height=2, fig.align="center"}
-ggplot(data = jibondo.freq,  aes(x = fishing.ground, y = percentage.fisher))+
+
+ggplot(data = jibondo.freq,  aes(x = locality, y = percentage.fisher))+
   geom_col(fill = "grey50", width = .75)+
   coord_flip()+
   theme_minimal()+
@@ -150,7 +336,7 @@ ggplot(data = jibondo.freq,  aes(x = fishing.ground, y = percentage.fisher))+
         panel.grid.major.x = element_line(linetype = 2),
         panel.grid.minor.x = element_blank())+
   labs(y = "Number of Octopus Fishers",  x = "Fishing ground") +
-  scale_x_discrete(limits = c("Mto Mkuu", "Jibondo Kusini", "Dongo", "Kitutia", "Jibondo") %>% rev())+
+  scale_x_discrete(limits = c("Mchanga Nyuma", "Lwala", "Mto Wa Fungu", "Kitutia") %>% rev())+
   scale_y_continuous(breaks = seq(10,60,10), position = "right")
 ```
 
@@ -179,7 +365,7 @@ ggplot() +
 
 
 ```{r tab12}
-bwejuu.freq = jibondo.bwejuu %>% filter(village == "Bwejuu") %>% group_by(fishing.ground) %>% summarise(Fisher = n()) %>% ungroup() %>% mutate(percentage.fisher = Fisher/sum(Fisher)*100) %>% arrange(desc(percentage.fisher))
+bwejuu.freq = jibondo.bwejuu %>% filter(village == "Bwejuu") %>% group_by(locality) %>% summarise(Fisher = n()) %>% ungroup() %>% mutate(percentage.fisher = Fisher/sum(Fisher)*100) %>% arrange(desc(percentage.fisher))
 
 bwejuu.freq %>%
   kable( "html", caption = "Coral reefs that are mostly used for octopus fishery as fishing  ground in Bwejuu Island ", col.names = c("Fishing ground", "Number", "Percentage"), align = "c") %>%
@@ -190,7 +376,8 @@ bwejuu.freq %>%
 
 
 ```{r fig-bwejuu, fig.cap="Percentage of octopus fishers at different coral reefs grounds at Bwejuu Island", fig.width=5, fig.height=3, fig.align="center"}
-ggplot(data = bwejuu.freq,  aes(x = fishing.ground, y = percentage.fisher))+
+
+ggplot(data = bwejuu.freq,  aes(x = locality, y = percentage.fisher))+
   geom_col(fill = "grey50", width = .75)+
   coord_flip()+
   theme_minimal()+
@@ -202,12 +389,8 @@ ggplot(data = bwejuu.freq,  aes(x = fishing.ground, y = percentage.fisher))+
         panel.grid.major.x = element_line(linetype = 2),
         panel.grid.minor.x = element_blank())+
   labs(y = "Number of Octopus Fishers",  x = "Fishing ground") +
-  scale_x_discrete(limits = c("Nyamalile", "Banda Mrima", "Vijambani", "Bwejuu Kusini", "Kaule", "Mwamba Wa Pwani", "Mbakare", "Ngusi") %>% rev())+
+  scale_x_discrete(limits = c("Mnyamalile", "Mlima", "Vijambani", "Mwamba Kaskazini", "Kaule", "Rasi Ya Mwamba", "Ngusi") %>% rev())+
   scale_y_continuous(breaks = seq(10,60,10), position = "right")
-```
-
-```{r}
-
 ```
 
 ```{r}
@@ -251,8 +434,13 @@ field.octopus %>% group_by( village) %>% summarise(count = n(), cpue.bar = mean(
 ```
 
 ```{r}
-field.octopus %>% group_by( village) %>% summarise(count = n(), cpue.bar = mean(cpue), cpue.median = median(cpue), cpue.sd = sd(cpue, na.rm = TRUE)/sqrt(count)) %>% filter(!is.na(cpue.sd)) %>% arrange(cpue.bar) %>% select(-cpue.median) %>% kable("latex", booktabs = T) %>%
-kable_styling(latex_options = "striped")
+field.octopus %>% 
+  group_by( village) %>% 
+  summarise(count = n(), cpue.bar = mean(cpue), cpue.median = median(cpue), 
+            cpue.sd = sd(cpue, na.rm = TRUE)/sqrt(count)) %>% 
+  filter(!is.na(cpue.sd)) %>% 
+  arrange(cpue.bar) %>% select(-cpue.median) %>% kable("latex", booktabs = T) %>%
+  kable_styling(latex_options = "striped")
 ```
 
 
@@ -467,7 +655,7 @@ cowplot::plot_grid(ne.current, in.current,se.current, nrow = 1,
 
 
 
-```{r , eval = TRUE}
+```{r , eval = FALSE}
 
 # getInfo("mhsstdmday")
 
@@ -720,7 +908,7 @@ cowplot::plot_grid(mar.g, aug.g,diff.g, nrow = 1,
 
 ### Chlorophyll-*a*
 
-```{r, eval = TRUE}
+```{r, eval = FALSE}
 
 # getInfo("mhchlamday")
 
@@ -1139,6 +1327,11 @@ section.mafia %>%
 ```
 
 ```{r}
+section.mafia %>% subset(stationId %in% c(12,29,30,31,32,33,34)) %>% plot(xtype = "longitude", ztype = "image", ylim = c(.50,5), which = c("temperature", "oxygen", "fluorescence", "map"))
+```
+
+
+```{r}
 
 ctd.mafia.tb = NULL
 
@@ -1449,3 +1642,89 @@ ggplot()+
   facet_wrap(~depth)+
   labs(x = "", y = "")
 ```
+
+
+discussion notes
+coral reefs
+1. *reef flats--- foot fishery*
+2. *inner reefs---diving octopus fishery*
+3. *vijamba---diving octopus fishery*
+
+
+### landscaping
+heterogeity and homogeneity-habitat fragementations
+
+
+## Miamba
+
+<!-- - make corrections of Kurunge reefs-separate it with the inner reef -->
+<!-- - move name of mto wa fungu to the unmentioned reef -->
+<!-- - merge the previous named mto wa fungu with mchange nyuma -->
+<!-- - separate mchanga nyuma at the interssection of juani and jibondo islands -->
+
+## explaining what the data means
+Data interpretation is a broad subject that can be applied in different ways. We will focus on basic interpretation of water quality and benthic macroinvertebrate data that were collected in the field. Sampling water quality or benthic macroinvertebrate parameters, such as dissolved oxygen or percent clingers, yields data in the form of qualitative or quantitative measurements. For example, a dissolved oxygen measurement might read 5.2 milligrams per liter (mg/l). Interpreting that measurement includes giving it meaning is that particular measurement at a healthy dissolved oxygen level? Does it mean that the entire stream being measured is healthy or just that portion of that stream where the dissolved oxygen was measured? How does that measurement fit into the context of the entire stream you're monitoring? Does it seem unusual to get a reading of 5.2 mg/l and if so, what might be causing such an irregular number?
+
+```{r}
+cols = c("red", "blue", "green", "maroon")
+
+ggplot()+
+  geom_sf(data = octopus.ground.sf %>% filter(Area == "Jibondo"), 
+          aes(fill = type), col = "black", size = 0.25)+ 
+  geom_point(data = ctd.mafia.tb %>% filter(pressure == .5 & site == "Jibondo"), 
+             aes(x = lon, y = lat, col = oxygen), size = 5)+ 
+  scale_colour_gradientn(colors = oceColorsJet(120),
+                         breaks = seq(1.8, 2.4, length.out = 4))+
+  scale_fill_manual(values = cols)
+```
+
+```{r}
+catch = readxl::read_excel("Octopus.xlsx", sheet = 2)
+
+# field.data = field %>%
+#   mutate(date = dmy(siku) ) %>% 
+#   filter(Kijiji %in% c("Somanga", "Songosongo")) %>% 
+#   select(date, month = Month, village = Kijiji, diko = Diko, Locality,
+#          vessels = 7,engine.power = 8, 
+#          fisher.number = 9, fishing.ground = 11, fish.type = 13,species = 14,
+#          Family = 15,weight = 16, number.octopus = 17,cpue = 18) %>% 
+#   mutate(catch.rate = weight/fisher.number, month = month(date))%>%
+#   filter(fish.type == "Pweza")
+
+catch = catch %>% 
+  mutate(Locality = replace(Locality,Locality == "Mbakare Ya Mwamba", "Mwamba Kaskazini"),
+         Locality = replace(Locality,Locality == "Mwamba Wa Pwani", "Mwamba Kaskazini"),
+         Locality = replace(Locality,Locality == "Banda Mrima", "Mlima"),
+         Locality = replace(Locality,Locality == "Nyamalile", "Mnyamalile"),
+         Locality = replace(Locality,Locality == "Makolokoroni", "Mchanga Nyuma"),
+         Locality = replace(Locality,Locality == "Malokoni", "Mchanga Nyuma"),
+         Locality = replace(Locality,Locality == "Kiziji", "Mchanga Nyuma"),
+         Locality = replace(Locality,Locality == "Banyani", "Baniani"))
+```
+
+```{r}
+catch %>% filter(Specie == "Pweza") %>% group_by(Locality, Kijiji) %>% summarise(lon = mean(Longitude), lat = median(Latitude),fishers = median(`Idadi Ya Wavuvi Chomboni`), cpue = mean(Cpue)) %>% arrange(Kijiji)
+
+
+```
+
+```{r}
+octopus.ground.sf%>% 
+  filter(type %in% c("outer coral", "inner coral")) %>% arrange(Area, Name) %>%
+  st_set_geometry(NULL) %>% 
+  mutate(mwamba = as.character(Name),
+         mwamba = replace(mwamba, mwamba == "Vijamba vya Dima", "Vijambani"),
+         mwamba = replace(mwamba, mwamba == "Vijamba vya Mnyamalile", "Vijambani"),
+         mwamba = replace(mwamba, mwamba == "Mto wa Fungu", "Mto Wa Fungu"),
+         mwamba = replace(mwamba, mwamba == "Mchanga nyumba", "Mchanga Nyuma"),
+         mwamba = replace(mwamba, mwamba == "Mto wa Fungu", "Mto Wa Fungu"),
+         mwamba = replace(mwamba, mwamba == "Chamba cha Chocha", "Chamba Cha Chocha")) %>%
+  mutate(type = as.character(type),
+         type = replace(type, type == "outer coral", "reef flat"),
+         type = replace(type, type == "inner coral", "submerged reef")) %>%
+  mutate(Area = replace(Area, Area == "Maji haba", NA))
+
+
+octopus.ground.sf%>% st_set_geometry(NULL) %>% distinct(type)
+```
+
