@@ -15,7 +15,7 @@ always_allow_html: yes
 
 # Results
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "", options(digits = 2))
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "", options(digits = 4))
 ```
 
 
@@ -121,7 +121,8 @@ field = field %>%
          Locality = replace(Locality,Locality == "Makolokoroni", "Mchanga Nyuma"),
          Locality = replace(Locality,Locality == "Malokoni", "Mchanga Nyuma"),
          Locality = replace(Locality,Locality == "Kiziji", "Mchanga Nyuma"),
-         Locality = replace(Locality,Locality == "Banyani", "Baniani"))
+         Locality = replace(Locality,Locality == "Banyani", "Baniani"), 
+         Locality = replace(Locality,Locality == "Mwamba Wa Kati - Songo", "Luala"))
 
 field.data = field %>%
   mutate(date = dmy(siku) ) %>% 
@@ -193,19 +194,20 @@ octopus.ground.cpue.sf = octopus.ground.sf %>%
 
 miamba.jibondo.map = ggplot() + 
   geom_sf(data = octopus.ground.sf %>% filter(type != "Island"), aes(fill = type))+
-  geom_sf(data = tz.ke, fill = "#DFC27D")+
+  geom_sf(data = tz.ke, fill = "#E8D6B1", col = "#60421A", size = .5) +
   coord_sf(xlim = c(39.6, 39.8), ylim = c(-8.15, -7.95))+
   scale_fill_manual(values = c("#FFFFCC","#B2DF8A","#66C2A5"),
                     label = c("Shallow Areas", "Reef flat", "Subermeged Reef"), 
                     name = "Habitat type")+
   theme_bw()+
-  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+  theme(panel.background = element_rect(fill = "#6ECFF6", colour = "black"),
         legend.position = c(.78,.16), 
         legend.background = element_rect(colour = 1), 
-        legend.title = element_text(face = "bold"))+
+        legend.title = element_text(face = "bold"),
+        axis.text = element_text(size = 10))+
   ggrepel::geom_text_repel(data = octopus.ground.names.df %>% filter(Area == "Jibondo"), 
                            aes(x = lon, y = lat, label = mwamba)) +
-  annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland")+
+  annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland", size = 5)+
   labs(x = "", y = "")+
   scale_x_continuous(breaks = seq(39.6, 39.8,length.out = 4) %>% round(2))+
   scale_y_continuous(breaks = seq(-8.15, -7.95, length.out = 4) %>% round(2))
@@ -214,19 +216,25 @@ miamba.jibondo.cpue = ggplot()+
   geom_sf(data = octopus.ground.cpue.sf, col = 1, fill = "grey85") +
   geom_sf(data = octopus.ground.cpue.sf %>% filter(Area == "Jibondo"), 
           aes(fill = as.factor(cpue)))+
-  geom_sf(data = tz.ke, fill = "#DFC27D")+
+  geom_sf(data = tz.ke, fill = "#E8D6B1", col = "#60421A", size = .5) +
   coord_sf(xlim = c(39.6, 39.8), ylim = c(-8.15, -7.95))+
   theme_bw()+
-  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+  theme(panel.background = element_rect(fill = "#6ECFF6", colour = "black"),
         legend.position = c(.88,.15), 
-        legend.background = element_rect(colour = NA, fill = "lightblue"), 
+        legend.background = element_rect(colour = NA, fill = "#6ECFF6"), 
         legend.title = element_text(face = "bold"),
         legend.direction = "vertical",
         legend.key.width = unit(.85, "cm"),
-        legend.key.height =  unit(.4, "cm"))+
-  ggrepel::geom_text_repel(data = octopus.ground.names.df %>% filter(Area == "Jibondo"), 
+        legend.key.height =  unit(.4, "cm"),
+        axis.text = element_text(size = 10))+
+  ggrepel::geom_text_repel(nudge_x = -0.015, nudge_y = 0.015, data = octopus.ground.names.df %>% 
+                             filter(Area == "Jibondo" & 
+                                      Name %in% c("Kitutia", 
+                                                  "Mchanga nyumba", 
+                                                  "Mto wa Fungu", 
+                                                  "Lwala")), 
                            aes(x = lon, y = lat, label = mwamba)) +
-  annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland")+
+  annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland", size = 5)+
   labs(x = "", y = "")+
   scale_x_continuous(breaks = seq(39.6, 39.8,length.out = 4) %>% round(2))+
   scale_y_continuous(breaks = seq(-8.15, -7.95, length.out = 4) %>% round(2))+
@@ -245,13 +253,13 @@ cowplot::plot_grid(miamba.jibondo.map, miamba.jibondo.cpue, nrow = 1, labels = c
 miamba.bwejuu.map = ggplot() + 
   geom_sf(data = octopus.ground.sf %>% filter(type != "Island" & Area == "Bwejuu"), 
           aes(fill = type))+
-  geom_sf(data = tz.ke, fill = "#DFC27D")+
+  geom_sf(data = tz.ke, fill = "#E8D6B1", col = "#60421A", size = .5) +
   coord_sf(xlim = c(39.45, 39.58), ylim = c(-8.1, -7.92))+
   scale_fill_manual(values = c("#B2DF8A","#66C2A5"),
                     label = c("Reef flat", "Subermeged Reef"), 
                     name = "Habitat type")+
   theme_bw()+
-  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+  theme(panel.background = element_rect(fill = "#6ECFF6", colour = "black"),
         legend.position = c(.29,.12), 
         legend.background = element_rect(colour = 1), 
         legend.title = element_text(face = "bold"))+
@@ -269,12 +277,12 @@ miamba.bwejuu.cpue = ggplot() +
   geom_sf(data = octopus.ground.cpue.sf %>% filter(Area == "Bwejuu") %>% 
             mutate(group = cut(cpue, c(0,3,5,6,8)))           , 
           aes(fill = as.factor(group)))+
-  geom_sf(data = tz.ke, fill = "#DFC27D") +
+  geom_sf(data = tz.ke, fill = "#E8D6B1", col = "#60421A", size = .5) +
   coord_sf(xlim = c(39.45, 39.58), ylim = c(-8.1, -7.92))+
   theme_bw()+
-  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+  theme(panel.background = element_rect(fill = "#6ECFF6", colour = "black"),
         legend.position = c(.82,.15), 
-        legend.background = element_rect(fill = "lightblue",colour = NA), 
+        legend.background = element_rect(fill = "#6ECFF6",colour = NA), 
         legend.title = element_text(face = "bold"),
         legend.direction = "vertical",
         legend.key.width = unit(.85, "cm"),
@@ -299,22 +307,22 @@ cowplot::plot_grid(miamba.bwejuu.map, miamba.bwejuu.cpue, nrow = 1, labels = c("
 miamba.somanga.map = ggplot() +
   geom_sf(data = octopus.ground.sf %>% filter(type %in% c("reef flat", "submerged reef")), 
           aes(fill = type))+
-  geom_sf(data = tz.ke, fill = "#DFC27D") +
-  coord_sf(xlim = c(39.325, 39.60), ylim = c(-8.46, -8.34))+
+  geom_sf(data = tz.ke, fill = "#E8D6B1", col = "#60421A", size = .5) +
+  coord_sf(xlim = c(39.28, 39.60), ylim = c(-8.46, -8.26))+
   scale_fill_manual(values = c("#B2DF8A","#66C2A5"),
                     label = c("Reef flat", "Subermeged Reef"), 
                     name = "Habitat type")+
   theme_bw()+
-  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
-        legend.position = c(.87,.17), 
+  theme(panel.background = element_rect(fill = "#6ECFF6", colour = "black"),
+        legend.position = c(.87,.12), 
         legend.background = element_rect(colour = 1), 
         legend.title = element_text(face = "bold"))+
   ggrepel::geom_text_repel(data = octopus.ground.names.df %>% filter(Area == "Somanga"), 
                            aes(x = lon, y = lat, label = mwamba)) +
   # annotate(geom = "text", x = 39.685,y = -7.96, label = "Mafia\nIsland")+
   labs(x = "", y = "") +
-  scale_x_continuous(breaks = seq(39.35, 39.60,length.out = 4))+
-  scale_y_continuous(breaks = seq(-8.46, -8.34, length.out = 4))
+  scale_x_continuous(breaks = seq(39.28, 39.60,length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.46, -8.28, length.out = 4))
 
 miamba.somanga.cpue = ggplot() +
   # geom_sf(data = octopus.ground.cpue.sf %>% filter(Area == "Bwejuu"), 
@@ -323,12 +331,12 @@ miamba.somanga.cpue = ggplot() +
   geom_sf(data = octopus.ground.cpue.sf %>% filter(Area == "Somanga") %>% 
     mutate(group = cut(cpue, c(0,2,3,4,6))) %>% arrange(desc(cpue)), 
           aes(fill = as.factor(group)))+
-  geom_sf(data = tz.ke, fill = "#DFC27D") +
-  coord_sf(xlim = c(39.325, 39.60), ylim = c(-8.46, -8.34))+
+ geom_sf(data = tz.ke, fill = "#E8D6B1", col = "#60421A", size = .5) +
+  coord_sf(xlim = c(39.28, 39.60), ylim = c(-8.46, -8.26))+
   theme_bw()+
-  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
-        legend.position = c(.92,.22), 
-        legend.background = element_rect(fill = "lightblue",colour = NA), 
+  theme(panel.background = element_rect(fill = "#6ECFF6", colour = "black"),
+        legend.position = c(.92,.15), 
+        legend.background = element_rect(fill = "#6ECFF6",colour = NA), 
         legend.title = element_text(face = "bold"),
         legend.direction = "vertical",
         legend.key.width = unit(.85, "cm"),
@@ -336,16 +344,17 @@ miamba.somanga.cpue = ggplot() +
   ggrepel::geom_text_repel(data = octopus.ground.names.df %>% 
                              filter(Area == "Somanga"), 
                            aes(x = lon, y = lat, label = mwamba)) +
-  scale_x_continuous(breaks = seq(39.35, 39.60,length.out = 4))+
-  scale_y_continuous(breaks = seq(-8.46, -8.34, length.out = 4)) +
+  scale_x_continuous(breaks = seq(39.28, 39.60,length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.46, -8.28, length.out = 4))+
   scale_fill_manual(values = c("red", "yellow", "orange", "green"), 
                     label = c("2","3","4","6"), 
                     name = "Catch rate",
                     na.value = "grey85")+
   labs(x = "", y = "")
 
-cowplot::plot_grid(miamba.somanga.map, miamba.somanga.cpue, nrow = 2, labels = c("a)", "b)"),
-                   label_x = .2, label_y = .98, label_fontface = "plain", label_size = 12)
+cowplot::plot_grid(miamba.somanga.map, miamba.somanga.cpue, nrow = 1, 
+                   labels = c("a)", "b)"),label_x = .2, label_y = .98,
+                   label_fontface = "plain", label_size = 12)
 ```
 
 
@@ -354,16 +363,17 @@ cowplot::plot_grid(miamba.somanga.map, miamba.somanga.cpue, nrow = 2, labels = c
 miamba.songosongo.map = ggplot() +
   geom_sf(data = octopus.ground.sf %>% filter(type %in% c("reef flat", "submerged reef")), 
           aes(fill = type))+
-  geom_sf(data = tz.ke, fill = "#DFC27D") +
+  geom_sf(data = tz.ke, fill = "#E8D6B1", col = "#60421A", size = .5) +
   coord_sf(xlim = c(39.34, 39.61), ylim = c(-8.66, -8.45))+
   scale_fill_manual(values = c("#B2DF8A","#66C2A5"),
                     label = c("Reef flat", "Subermeged Reef"), 
                     name = "Habitat type")+
   theme_bw()+
-  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+  theme(panel.background = element_rect(fill = "#6ECFF6", colour = "black"),
         legend.position = c(.18,.13), 
         legend.background = element_rect(colour = 1), 
-        legend.title = element_text(face = "bold"))+
+        legend.title = element_text(face = "bold"),
+        axis.text = element_text(size = 10))+
   ggrepel::geom_text_repel(data = octopus.ground.names.df %>% 
                              filter(Area == "Songosongo"), 
                            aes(x = lon, y = lat, label = mwamba)) +
@@ -379,16 +389,17 @@ miamba.songosongo.cpue = ggplot() +
   geom_sf(data = octopus.ground.cpue.sf %>% filter(Area == "Songosongo") %>% 
     mutate(group = cut(cpue, c(0,2,5,6,8))) %>% arrange(desc(cpue)), 
           aes(fill = as.factor(group)))+
-  geom_sf(data = tz.ke, fill = "#DFC27D") +
+  geom_sf(data = tz.ke, fill = "#E8D6B1", col = "#60421A", size = .5) +
   coord_sf(xlim = c(39.34, 39.61), ylim = c(-8.66, -8.45))+
   theme_bw()+
-  theme(panel.background = element_rect(fill = "lightblue", colour = "black"),
+  theme(panel.background = element_rect(fill = "#6ECFF6", colour = "black"),
         legend.position = c(.2,.22), 
-        legend.background = element_rect(fill = "lightblue",colour = NA), 
+        legend.background = element_rect(fill = "#6ECFF6",colour = NA), 
         legend.title = element_text(face = "bold"),
         legend.direction = "vertical",
         legend.key.width = unit(.85, "cm"),
-        legend.key.height =  unit(.4, "cm"))+
+        legend.key.height =  unit(.4, "cm"),
+        axis.text = element_text(size = 10))+
   ggrepel::geom_text_repel(data = octopus.ground.names.df %>% 
                              filter(Area == "Songosongo"), 
                            aes(x = lon, y = lat, label = mwamba)) +
@@ -401,8 +412,8 @@ miamba.songosongo.cpue = ggplot() +
   labs(x = "", y = "")
 
 cowplot::plot_grid(miamba.songosongo.map, miamba.songosongo.cpue, 
-                   nrow = 1, labels = c("a)", "b)"),
-                   label_x = .2, label_y = .7, label_fontface = "plain", label_size = 12)
+                   nrow = 1, labels = c("a)", "b)"), label_x = .2, label_y = .7,
+                   label_fontface = "plain", label_size = 12)
 
 ```
 
@@ -1478,7 +1489,44 @@ section.mafia %>%
 ```
 
 ```{r}
-section.mafia %>% subset(stationId %in% c(12,29,30,31,32,33,34)) %>% plot(xtype = "longitude", ztype = "image", ylim = c(.50,5), which = c("temperature", "oxygen", "fluorescence", "map"))
+section.chooni.mange = section.mafia %>% subset(stationId %in% c(12,29,30,31,32,33,34)) 
+
+
+section.chooni.mange %>% plot(xtype = "longitude", ztype = "image", ylim = c(.50,5), which = c("temperature", "oxygen", "fluorescence", "map"))
+```
+
+```{r}
+section.chooni.mange.list =  section.chooni.mange@data$station
+
+section.chooni.mange.df = NULL
+
+for (n in 1:7){
+chooni.mange = section.chooni.mange.list[[n]]@data %>% 
+  as.data.frame() %>% 
+  mutate(lon = section.chooni.mange.list[[n]]@metadata$longitude, 
+         lat = section.chooni.mange.list[[n]]@metadata$latitude ,
+         station = n)
+
+section.chooni.mange.df = section.chooni.mange.df %>% bind_rows(chooni.mange)
+  
+}
+
+section.chooni.mange.df = section.chooni.mange.df%>% 
+  select(lon,lat, station, pressure, temperature, salinity, oxygen, fluorescence)
+
+```
+
+
+```{r}
+x = section.chooni.mange.df$lon; y = section.chooni.mange.df$pressure; z = section.chooni.mange.df$temperature
+
+temperature.interp = interpBarnes(x = x, y = y, z = z)
+Lon = temperature.interp$xg
+Depth = temperature.interp$yg
+Temperature = temperature.interp$zg
+
+imagep(Lon, Depth*-1, Temperature)
+
 ```
 
 
@@ -1634,7 +1682,7 @@ for (n in depth){
 
 surface = ctd.mafia.tb %>% filter(pressure == n)
 
-x = surface$lon;y = surface$lat; z = surface$temperature
+x = surface$lon; y = surface$lat; z = surface$temperature
 
 temperature.interp = interpBarnes(x = x, y = y, z = z)
 

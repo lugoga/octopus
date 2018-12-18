@@ -316,7 +316,7 @@ ctd.data[[30]] %>% plot()
 ```{r}
 kilwa.section = ctd.data %>% as.section()
 
-kilwa.section %>% plot(which = "map")
+kilwa.section %>% plot(which = "map",)
 
 # kilwa.section %>% plot()
 
@@ -338,18 +338,18 @@ section.off.songosongo %>%
 
 ```{r}
 section.south = list(
-  # ctd.data[[16]],
+  ctd.data[[16]],
                               ctd.data[[17]],
                               ctd.data[[18]], 
-                              ctd.data[[19]]
+                              ctd.data[[19]],
                      # , 
-                     #          ctd.data[[20]]
+                              ctd.data[[20]]
                      ) %>% 
   as.section()
 
 section.south %>% 
   plot(ztype = "image", 
-       which = c("temperature", "oxygen", "salinity", "map"), 
+       which = c("temperature", "oxygen", "fluorescence", "map"), 
        xtype = "longitude", ylim = c(0,2.5),zcol = oceColorsPalette(120))
 ```
 
@@ -434,12 +434,14 @@ Profile and section plot could only answer the question relating to vertical str
 
 
 ```{r fig6, fig.cap="spatial distribution of temperature", fig.width=5.5, fig.align="center"}
-ggplot() + 
-  geom_raster(data = data.temp.long, aes(x = longitude, y = latitude, fill = temperature), interpolate = TRUE)+
+
+kilwa.spatial.temp = ggplot() + 
+  geom_raster(data = data.temp.long, 
+              aes(x = longitude, y = latitude, fill = temperature), interpolate = TRUE)+
   geom_contour(data = data.temp.long, 
                aes(x = longitude, y = latitude, z = temperature),
                size = .125, color = "black")+
-  scale_fill_gradientn(colours = oceColorsPalette(120), name = "Temperature")+
+  scale_fill_gradientn(colours = oceColorsJet(120), name = "Temperature")+
   # geom_sf(data = miamba, aes(fill = type))+
   geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
   coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36))+
@@ -452,7 +454,9 @@ ggplot() +
         legend.title = element_text(size = 11, colour = "black"),
         legend.direction = "vertical",
         legend.position = c(.12,.3),
-        legend.background = element_blank()) 
+        legend.background = element_blank()) +
+  scale_x_continuous(breaks = seq(39.25,39.55, length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.55,-8.38, length.out = 4) %>% round(digits = 2))
   
   
   
@@ -472,7 +476,8 @@ data.oxygen.long = data.frame(longitude, data.oxy.df) %>%
 
 Figure \@ref(fig:fig7)
 ```{r fig7, fig.cap="Spatial distribution of oxygen", fig.width=5.5, fig.align="center"}
-ggplot() + 
+
+kilwa.spatial.oxygen = ggplot() + 
   geom_raster(data = data.oxygen.long, aes(x = longitude, y = latitude, fill = oxygen), interpolate = TRUE)+
   geom_contour(data = data.oxygen.long, 
                aes(x = longitude, y = latitude, z = oxygen),
@@ -489,7 +494,9 @@ ggplot() +
         legend.title = element_text(size = 11, colour = "black"),
         legend.direction = "vertical",
         legend.position = c(.1,.3),
-        legend.background = element_blank()) 
+        legend.background = element_blank()) +
+  scale_x_continuous(breaks = seq(39.25,39.55, length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.55,-8.38, length.out = 4) %>% round(digits = 2))
 ```
 
 
@@ -545,12 +552,13 @@ data.fluorescence.long = data.frame(longitude, data.oxy.df) %>%
 
 Figure \@ref(fig:fig9)
 ```{r fig9, fig.cap="spatial distribution of fluorescence", fig.width=5.5, fig.align="center"}
-ggplot() + 
+
+kilwa.spatial.fluorescence = ggplot() + 
   geom_raster(data = data.fluorescence.long, aes(x = longitude, y = latitude, fill = fluorescence), interpolate = TRUE)+
   geom_contour(data = data.fluorescence.long, 
                aes(x = longitude, y = latitude, z = fluorescence),
                size = .125, color = "black")+
-  scale_fill_gradientn(colours = oceColorsPalette(120), name = "Fluorescence")+
+  scale_fill_gradientn(colours = oceColorsChlorophyll(120), name = "Fluorescence")+
   # geom_sf(data = miamba, aes(fill = type))+
   geom_sf(data = tz.ke, fill = "grey80", colour = "black") + 
   coord_sf(xlim = c(39.25, 39.56), ylim = c(-8.56, -8.36))+
@@ -563,7 +571,9 @@ ggplot() +
         legend.title = element_text(size = 11, colour = "black"),
         legend.direction = "vertical",
         legend.position = c(.15,.3),
-        legend.background = element_blank()) 
+        legend.background = element_blank()) +
+  scale_x_continuous(breaks = seq(39.25,39.55, length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.55,-8.38, length.out = 4) %>% round(digits = 2))
 ```
 
 ## Climatology SST and Chlorophyll-*a*
