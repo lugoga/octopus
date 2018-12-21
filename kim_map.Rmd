@@ -1,0 +1,130 @@
+---
+title: "Kimirei map"
+author: "Masumbuko Semba"
+date: "December 6, 2018"
+output: 
+      bookdown::html_document2
+      # bookdown::pdf_document2
+# link-citations: yes
+# csl: plos.csl
+# bibliography: octopus.bib
+# editor_options: 
+#   chunk_output_type: console
+# always_allow_html: yes
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, comment = "", options(digits = 4))
+```
+
+
+
+```{r}
+require(tidyverse)
+require(sf)
+require(oce)
+```
+
+
+```{r}
+# read etopo 1 ascii file
+etopo = sp::read.asciigrid("E:/GIS/ROADMAP/Etopo 1/Tanzania_etopo1/tanz1_-3432.asc")
+# convert the etopo file into tibble
+etopo.df = as.data.frame(etopo)%>%as.tibble()
+
+# tidy the data
+etopo.df = etopo.df%>%
+  rename(lon = s1,lat = s2, bathmetry = E..GIS.ROADMAP.Etopo.1.Tanzania_etopo1.tanz1_.3432.asc)%>%
+  select(lon,lat, bathmetry)
+
+# select the bathmetry value only within the pemba channel area of interest
+bathmetry = etopo.df%>%filter(lon>=38 & lon <=42 & lat >=-11 & lat <= -4 & bathmetry <=0)
+
+```
+
+
+```{r eval=TRUE}
+
+africa = read_sf("E:/Data Manipulation/nyamisi/regional/africa.shp")
+
+tz.ke = africa%>%select(-c(FIPS_CNTRY, REGIONA, EMPTY, EMPTY2))
+
+mimp = st_read("shapefiles/mimp.shp")
+mangroves = st_read("shapefiles/coastal_land_cover.shp")
+coral = st_read("shapefiles/coral_reefs.shp")
+```
+
+
+```{r}
+main.map = ggplot() +
+  geom_raster(data = bathmetry, aes(x = lon, y = lat, fill = bathmetry))+
+  geom_contour(data = bathmetry %>% filter(bathmetry > -100 & bathmetry <5), 
+              aes(x = lon, y = lat, z = bathmetry), linetype = 1,
+              breaks = c(-20), col = "black")+
+  geom_contour(data = bathmetry %>% filter(bathmetry > -4000), 
+              aes(x = lon, y = lat, z = bathmetry), linetype = 3, 
+              breaks = seq(-1800,-100, 400), col = "black")+
+  geom_sf(data = tz.ke, fill = "#E8D6B1", col = "#60421A", size = .5)  +
+  geom_sf(data = mangroves %>% filter(CLASS == "Mangrove"), fill = "green", col = NA) +
+  # geom_sf(data = coral)+
+  coord_sf(xlim = c(38.8,40.2), ylim = c(-8.4,-6.3)) +
+  theme_bw()+
+  theme(legend.direction = "vertical", legend.key.width = unit(.75, "lines"), 
+        legend.key.height = unit(1.75,"lines"), 
+        legend.position = c(.15,.25),
+        legend.background = element_rect(colour = NA, fill = NA)) + 
+  # scale_x_continuous(breaks = seq(39.25, 40.15, length.out = 4)) +
+  # scale_y_continuous(breaks = seq(-8.6, -7.5, length.out = 4)) +
+  labs(x = "", y = "")+
+  annotate(geom = "text", x = 39.9, y = -7.7, label = "Mafia\nIsland")+
+  annotate(geom = "text", x = 39.7, y = -6.4, label = "Unguja\nIsland")+
+  annotate(geom = "text", x = 39.26, y = -8.23, label = "Pombwe")+
+  annotate(geom = "text", x = 39.2, y = -6.8, label = "Kunduchi")+
+  annotate(geom = "text", x = 38.9, y = -6.4, label = "Bagamoyo") +
+  scale_fill_gradientn(limits = c(-1850,0),
+                       colours = oceColorsGebco(120), breaks = seq(-1800,0,300),
+                       label = seq(0,1800,300)%>% rev()) +
+  guides(fill = guide_colorbar(title = "Depth(m)", title.position = "top", title.hjust = 0.5))+
+  scale_x_continuous(breaks = seq(38.8,40.2,length.out = 4))+
+  scale_y_continuous(breaks = seq(-8.4,-6.4, length.out = 4) %>% round(digits = 2))+
+  ggsn::scalebar(location = "bottomleft", dist = 20, x.min = 38.85, x.max = 40.2, y.min = -8.4, y.max = -6.5, dd2km = TRUE, model = "WGS84", st.dist = 0.02, st.size = 4)
+
+
+```
+
+```{r}
+eastern.africa = spData::world %>% filter(name_long %in% c("Tanzania", "Kenya", "Mozambique", "Madagascar"))
+
+study.area.sf = data.frame(lon = c(39, 41,41, 39, 39),
+                           lat = c(-9, -9, -6.2, -6.2, -9)) %>% 
+  st_as_sf(coords= (c("lon", "lat"))) %>%
+  st_set_crs(4326) %>%
+  summarise(geometry = st_combine(geometry)) %>%
+  st_cast("POLYGON")
+
+inset = ggplot() +
+  geom_sf(data = spData::world, fill = "#E8D6B1", col = "#60421A", size = .5 )+
+  geom_sf(data = study.area.sf, fill = NA, col = "red", size = 1) +
+  coord_sf(ylim = c(-25, 2), xlim = c(35, 48))+
+  theme_bw()+
+  theme(panel.background = element_rect(fill = "#6ECFF6", colour = "black"),
+        panel.grid = element_line(colour = NA),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        plot.background = element_blank())
+```
+
+
+
+```{r}
+cowplot::ggdraw()+ 
+    cowplot::draw_plot(main.map, x = 0, y = 0, width = 1, height = 1, scale = 1)+
+    cowplot::draw_plot(inset, x = .54, y = -.06,width = .5, height = .5,scale = .5)
+```
+
+```{r}
+cowplot::ggdraw() +
+  cowplot::draw_image("./kim2.png")
+```
+

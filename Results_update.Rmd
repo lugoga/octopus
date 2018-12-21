@@ -31,6 +31,168 @@ require(kableExtra)
 require(ggsci)
 ```
 
+### Length weight relationship
+
+
+```{r}
+morphometric = readxl::read_excel("E:/Data Manipulation/mafia_kilwa_octopus_mapping/MorphometricNew.xlsx")
+
+morphometric = morphometric %>% filter(Weight < 6 & DML < 25 & Kijiji != "JOJO") %>% 
+  mutate(Kijiji = replace(Kijiji, Kijiji == "SOMANGA KUSINI", "Songosongo"),
+         Kijiji = replace(Kijiji, Kijiji == "BWEJUU", "Bwejuu"),
+         Kijiji = replace(Kijiji, Kijiji == "JIBONDO", "Jibondo"))
+
+ggplot(data = morphometric, 
+       aes(x = DML, y = Weight)) + 
+  geom_point(col = "gray50", size = .9) + 
+  geom_smooth(fill = "pink", alpha = 1, method = "loess", col = "red", size = 1) + 
+  theme(axis.title = element_text(size = 12),
+        axis.text = element_text(size = 11, colour = "black"),
+        legend.position = "none",
+        panel.background = element_rect(colour = "black"),
+        panel.grid.minor = element_line(colour = NA))+
+  labs(x = "DML (cm)", y = "Body weight (Kg)") +
+  # scale_x_continuous(breaks = seq(6,25,3)) +
+  # scale_y_continuous(breaks = seq(0.3,5,.75))+ 
+  facet_wrap(~Kijiji, nrow = 1, scales = "fixed") 
+
+```
+
+
+```{r}
+
+ggplot(data = morphometric, aes(x = Weight, fill = Kijiji)) + geom_histogram()
+
+```
+
+```{r}
+morphometric.group =  morphometric %>% 
+  mutate(group = cut(x = Weight, breaks = seq(0,7,.5), labels = seq(0.5,7,.5))) %>% 
+  group_by(group, Kijiji) %>% 
+  summarise(n = n())
+
+morphometric.group.perc = morphometric.group %>% 
+  ungroup%>% filter(Kijiji == "Bwejuu") %>% mutate(perc = n/sum(n)*100) %>%
+  bind_rows(morphometric.group %>% ungroup%>% filter(Kijiji == "Jibondo") %>% mutate(perc = n/sum(n)*100),
+            morphometric.group %>% ungroup%>% filter(Kijiji == "Somanga") %>% mutate(perc = n/sum(n)*100),
+            morphometric.group %>% ungroup%>% filter(Kijiji == "Songosongo") %>% mutate(perc = n/sum(n)*100))
+
+
+```
+
+
+```{r}
+ggplot(data = morphometric.group.perc, 
+       aes(x = group, y = perc)) + 
+  geom_col(fill = "grey50", col = NA)  + 
+  scale_x_discrete(breaks =seq(0.5,6.5,1)) + 
+  scale_y_continuous(breaks = seq(5,50,10))+ theme(axis.title = element_text(size = 12),
+        axis.text = element_text(size = 11, colour = "black"),
+        legend.position = "none",
+        panel.background = element_rect(colour = "black"),
+        panel.grid.minor = element_line(colour = NA))+
+  labs(x = "Weight group (kg)", y = "Percentage Composition") +
+  facet_wrap(~Kijiji, nrow = 2)
+```
+
+
+```{r}
+field = readxl::read_excel("e:/Data Manipulation/mafia_kilwa_octopus_mapping/Octopus.xlsx", sheet = 2)
+
+# field %>% names()
+
+field.data = field %>%
+  mutate(date = dmy(siku) ) %>% 
+  # filter(Kijiji %in% c("Somanga", "Songosongo")) %>% 
+  select(date, month = Month, village = Kijiji, diko = Diko, 
+         vessels = 7,engine.power = 8, 
+         fisher.number = 9, fishing.ground = 11, fish.type = 13,species = 14,
+         Family = 15,weight = 16, number.octopus = 17,cpue = 18) %>% 
+  mutate(catch.rate = weight/fisher.number, month = month(date))%>%
+  filter(fish.type == "Pweza")
+
+
+```
+
+
+
+
+```{r}
+village.stats = field.data %>% group_by(village, month) %>% 
+  summarise(n = n(),
+            cpue.mean = mean(catch.rate),
+            cpue.sd = sd(catch.rate)/n,
+            catch.mean = mean(weight),
+            catch.sd = sd(weight)/n) %>%
+  ungroup() %>%
+  mutate(miezi = month)
+
+
+village.stats$miezi = as.integer(village.stats$miezi)
+
+village.stats.order.miezi = village.stats %>% 
+  mutate(miezi = replace(miezi,miezi ==1, 3.25),
+                         miezi = replace(miezi,miezi ==2, 4),
+                         miezi = replace(miezi,miezi ==3, 5),
+                         miezi = replace(miezi,miezi ==11, 1),
+                         miezi = replace(miezi,miezi ==12, 2))
+
+village.stats.order.miezi$miezi = as.integer(village.stats.order.miezi$miezi)
+
+
+
+```
+
+
+```{r}
+ggplot(data = village.stats.order.miezi, aes(x = miezi, y = cpue.mean, col = village))+
+  geom_line(size = .5) +
+  geom_point( size = 5) +
+  geom_errorbar(aes(ymin = cpue.mean-cpue.sd, ymax = cpue.mean+cpue.sd), width = 0.25)  +
+  labs(x = "", y = "CPUE (Weight (Kg)/ Number of fishers)")+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        legend.direction = "horizontal",
+        legend.position = c(.3,.92),
+        legend.background = element_blank())+
+  scale_x_continuous(breaks = 1:5,
+                     labels = c("November", "December", "January", 
+                                "February", "March")) +
+  scale_color_discrete(name = "")
+# +
+#   annotate(geom = "text", x = 4.2, y = 5, 
+#            label = "Overall, Songosongo has\n higher CPUE than Somanga\nexcept for Month of January", 
+#            col = "grey50" ,size = 3.8)
+```
+
+
+```{r}
+ggplot(data = village.stats.order.miezi, aes(x = miezi, y = catch.mean, col = village))+
+  geom_line(size = .5) +
+  geom_point( size = 5) +
+  geom_errorbar(aes(ymin = catch.mean-catch.sd, ymax = catch.mean+catch.sd), width = 0.25)+
+  theme(panel.background = element_rect(colour = "black"),
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        legend.direction = "horizontal",
+        legend.position = c(.3,.92),
+        legend.background = element_blank(),
+        panel.grid.minor = element_line(colour = "white")) +
+  scale_y_continuous(breaks = seq(20,100,20))+
+  scale_x_continuous(breaks = 1:5,
+                     labels = c("November", "December", "January", 
+                                "February", "March")) +
+  scale_color_discrete(name = "")  +
+  labs(x = "", y = "Mean Total Landings (Kg)")
+```
+
+
+
+### Digitizing and other figures
+
 ```{r eval=TRUE}
 # getwd()
 # save.image(file = "result.RData")
@@ -70,43 +232,66 @@ coral = st_read("shapefiles/coral_reefs.shp")
 ```
 
 ```{r}
-ggplot() +
+bath = ggplot() +
   geom_raster(data = bathmetry, aes(x = lon, y = lat, fill = bathmetry))+
   geom_contour(data = bathmetry %>% filter(bathmetry > -100 & bathmetry <5), 
-              aes(x = lon, y = lat, z = bathmetry), linetype = 3,
+              aes(x = lon, y = lat, z = bathmetry), linetype = 1,
               breaks = c(-20), col = "black")+
   geom_contour(data = bathmetry %>% filter(bathmetry > -2000 & bathmetry <5), 
-              aes(x = lon, y = lat, z = bathmetry), 
+              aes(x = lon, y = lat, z = bathmetry), linetype = 3, 
               breaks = seq(-2000,-100, 400), col = "black")+
-  geom_sf(data = tz.ke, col = 1, fill = "grey85")  +
-  # geom_sf(data = mangroves %>% filter(CLASS == "Mangrove")) +
+  geom_sf(data = tz.ke, fill = "#E0D6C3", col = "#60421A", size = .5)  +
+  geom_sf(data = mangroves %>% filter(CLASS == "Mangrove"), fill = "green", col = NA) +
   geom_sf(data = coral)+
   coord_sf(xlim = c(39.2,40.2), ylim = c(-8.6,-7.5)) +
   theme_bw()+
-  theme(legend.direction = "vertical", legend.position = c(.85,.22),
-        legend.background = element_rect(colour = "black")) +
-  scale_fill_gradientn(name = "Depth(m)", limits = c(-2000,0),
-                       colours = oceColorsGebco(120), breaks =seq(-2000,0,500),
-                       label = seq(0,2000,500)%>% rev()) + 
+  theme(legend.direction = "horizontal", legend.key.width = unit(3, "lines"), 
+        legend.key.height = unit(0.75,"lines"), 
+        legend.position = "top",
+        legend.background = element_rect(colour = NA, fill = NA)) + 
   scale_x_continuous(breaks = seq(39.25, 40.15, length.out = 4)) +
   scale_y_continuous(breaks = seq(-8.6, -7.5, length.out = 4)) +
   labs(x = "", y = "")+
   annotate(geom = "text", x = 39.9, y = -7.87, label = "Mafia\nIsland")+
   annotate(geom = "text", x = 39.7, y = -8.45, label = "Songosongo\nIsland")+
-  annotate(geom = "text", x = 39.26, y = -8.23, label = "Somanga")
+  annotate(geom = "text", x = 39.26, y = -8.23, label = "Somanga")+
+  scale_fill_gradientn(limits = c(-2000,0),
+                       colours = oceColorsGebco(120), breaks =seq(-2000,0,500),
+                       label = seq(0,2000,500)%>% rev()) +
+  guides(fill = guide_colorbar(title = "Depth(m)", title.position = "top", title.hjust = 0.5))+
+  ggsn::scalebar(location = "bottomleft", dist = 20, x.min = 39.25, x.max = 40.15, y.min = -8.6, y.max = -7.5, dd2km = TRUE, model = "WGS84", st.dist = 0.02, st.size = 4)
+bath
 
 ```
 
 ```{r}
 eastern.africa = spData::world %>% filter(name_long %in% c("Tanzania", "Kenya", "Mozambique", "Madagascar"))
 
-ggplot() +
-  geom_sf(data = eastern.africa)+
-  coord_sf(ylim = c(-15, 0), xlim = c(35, 49))+
+study.area.sf = data.frame(lon = c(39, 41,41, 39, 39),
+                        lat = c(-9, -9, -7, -7, -9)) %>% 
+  st_as_sf(coords= (c("lon", "lat"))) %>%
+  st_set_crs(4326) %>%
+  summarise(geometry = st_combine(geometry)) %>%
+  st_cast("POLYGON")
+
+inset = ggplot() +
+  geom_sf(data = spData::world, fill = "#E8D6B1", col = "#60421A", size = .5 )+
+  geom_sf(data = study.area.sf, fill = NA, col = "red", size = 1) +
+  coord_sf(ylim = c(-15, 1), xlim = c(38, 48))+
   theme_bw()+
-  theme(panel.grid = element_line(colour = NA),
+  theme(panel.background = element_rect(fill = "#6ECFF6", colour = "black"),
+        panel.grid = element_line(colour = NA),
         axis.text = element_blank(),
-        axis.ticks = element_blank())
+        axis.ticks = element_blank(),
+        plot.background = element_blank())
+```
+
+
+
+```{r}
+cowplot::ggdraw()+ 
+    cowplot::draw_plot(bath, x = 0, y = 0, width = 1, height = 1, scale = 1)+
+    cowplot::draw_plot(inset, x = .54, y = .01,width = .5, height = .5,scale = .75)
 ```
 
 
